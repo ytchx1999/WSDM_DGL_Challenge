@@ -37,15 +37,40 @@ You also need at least 64GB of CPU memory.  GPU is not required.
 1. Convert csv file to DGL graph objects.
 
    ```
-   python csv2DGLgraph.py --dataset [A or B]
+   python3 csv2DGLgraph.py --dataset [A or B]
    ```
 
 2. Training.
 
    ```
-   python base_pipeline.py --dataset [A or B]
+   python3 base_pipeline.py --dataset [A or B]
+   nohup python3 base_pipeline.py --dataset A > ./outputs/a.log 2>&1 &
    ```
 
 ## Performance on Initial Test Set
 
 The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B.
+
+## Tree
+```bash
+.
+├── base_pipeline.py
+├── csv2DGLgraph.py
+├── DGLgraphs
+│   ├── Dataset_A.bin
+│   └── Dataset_B.bin
+├── outputs
+│   └── a.log
+├── README 2.md
+├── README.md
+├── test_csvs
+│   ├── input_A_initial.csv
+│   └── input_B_initial.csv
+└── train_csvs
+    ├── edges_train_A.csv
+    ├── edges_train_B.csv
+    ├── edge_type_features.csv
+    └── node_features.csv
+
+4 directories, 13 files
+```
