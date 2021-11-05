@@ -30,6 +30,8 @@ predict `p(t < t' | s, d, r)`, i.e. the probability that an edge with type `r` e
 
 ## Baseline usage
 
+不需要手动下载数据集，直接运行程序即可。
+
 To use the baseline you need to install [DGL](https://www.dgl.ai).
 
 You also need at least 64GB of CPU memory.  GPU is not required.
