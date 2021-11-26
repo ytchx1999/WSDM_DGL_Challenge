@@ -4,6 +4,7 @@
 # @Email  : wxuhong@amazon.com or wang_xuhong@sjtu.edu.cn
 # Feel free to send me an email if you have any question.
 # You can also CC Quan Gan (quagan@amazon.com).
+from genericpath import exists
 import torch.nn.functional as F
 import torch
 import dgl
@@ -201,6 +202,33 @@ def test(args, g, model):
     print(f'AUC is {round(AUC,5)}', flush=True)
 
 
+@torch.no_grad()
+def test_and_save(args, g, model):
+    model.eval()
+    test_csv = pd.read_csv(f'test_csvs/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
+    # label = test_csv.exist.values
+    src = test_csv.src.values
+    dst = test_csv.dst.values
+    start_at = torch.tensor(test_csv.start_at.values)
+    end_at = torch.tensor(test_csv.end_at.values)
+    if args.dataset == 'A':
+        emb_cats = torch.cat([g.ndata['emb'][src], g.ndata['emb'][dst]], 1)
+    if args.dataset == 'B':
+        emb_cats = torch.cat([g.ndata['emb']['User'][src], g.ndata['emb']['Item'][dst]], 1)
+
+    start_time_emb = model.time_encoding(start_at)
+    end_time_emb = model.time_encoding(end_at)
+    start_prob = model.time_predict(emb_cats, start_time_emb).squeeze()
+    end_prob = model.time_predict(emb_cats, end_time_emb).squeeze()
+    exist_prob = end_prob - start_prob
+
+    exist_prob = exist_prob.reshape(-1, 1).numpy()
+    np.savetxt(f'outputs/output_{args.dataset}.csv', exist_prob, delimiter=None)
+
+    # AUC = roc_auc_score(label, exist_prob)
+    # print(f'AUC is {round(AUC,5)}', flush=True)
+
+
 if __name__ == "__main__":
     args = get_args()
     print(args, flush=True)
@@ -214,3 +242,6 @@ if __name__ == "__main__":
     g = preprocess(args, g)
     g, model = train(args, g)
     test(args, g, model)
+    print("Saving results...", flush=True)
+    test_and_save(args, g, model)
+    print("Done!", flush=True)
