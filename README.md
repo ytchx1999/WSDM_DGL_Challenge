@@ -26,7 +26,7 @@ A:
 + ndata['feat']: `{'Node': 部分节点有特征，部分节点没有特征为全0}`
 + etype_feat: 目前没用到，边类型的特征
 
-B: 'Item': 899250, 'User': 791332
+B: 
 + edge: `{('User', 'e_type', 'Item'): (src, dst)}`
 + edata['ts']: `{('User', 'e_type', 'Item'): (time)}` 
 + edata['feat']: `{('User', 'e_type', 'Item'): 单纯的边特征}`
@@ -67,7 +67,7 @@ torch.Size([29457, 768])
 
 **`P(t_start <= t <= t_end | s, d, r) = P(t <= t_end | s, d, r) - P(t <= t_start | s, d, r)`**
 
-#### 算法流程
+#### 训练流程
 1. 根据 heterogeneous graph 结构和 ndata['feat']，通过 HGNN 训练得到节点的 `node_emb`
 2. 对于每条边，`edge_emb = cat([src_node_emb, dst_node_emb])` 
 3. 正/负采样，得到正样本和负样本的 `timestamp` 和 `label`
