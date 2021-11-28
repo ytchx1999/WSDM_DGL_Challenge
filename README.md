@@ -18,6 +18,21 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 ## Baseline description
 
+**时间编码 (time encoding)：** 时间戳为10位十进制数，抽出每一位乘0.1组成一个10维向量。
+
+例如，时间戳为`1420079360`, encoding后变成10维向量为 `[0.1000, 0.4000, 0.2000, 0.0000, 0.0000, 0.7000, 0.9000, 0.3000, 0.6000, 0.0000]`
+
+**负采样时间戳（random index）**--> `t'`
++ `t <= t', label = 1`
++ `t >  t', label = 0`
+
+求解 `P(t <= t' | s, d, r)`，表示在时间`t'`**之前**，从源节点s到目标节点d之前存在r类型的边的概率。
+
+最终inference：`t_start ~ t_end` 之间，从源节点s到目标节点d之前存在r类型的边的概率。
+`P(t_start <= t <= t_end | s, d, r) = P(t <= t_end | s, d, r) - P(t <= t_start | s, d, r)`
+
+---
+
 The baseline is only a minimal working example for both datasets, and it is certainly not optimal.  **You are encouraged to tweak it or propose your own solutions from scratch!**
 
 Here we summarize our baseline:
