@@ -18,6 +18,19 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 ## Baseline description
 
+**异构图的构造**
+A:
++ edge: `{'Node', 'e_type', 'Node'}: (src, dst)`
++ edata['ts']: `{'Node', 'e_type', 'Node'}: (time)`
++ ndata['feat]: 部分节点有特征，部分节点没有特征为全0
++ etype_feat: 目前没用到，边类型的特征
+
+B:
++ edge: `{'User', 'e_type', 'Item'}: (src, dst)`
++ edata['ts']: `{'User', 'e_type', 'Item'}: (time)`
++ edata['feat]: `{'User', 'e_type', 'Item'}: 单纯的边特征`
++ etype_feat: 目前没用到，边类型的特征
+
 **时间编码 (time encoding)：** 时间戳为10位十进制数，抽出每一位乘0.1组成一个10维向量。
 
 例如，时间戳为`1420079360`, encoding后变成10维向量为 `[0.1, 0.4, 0.2, 0.0, 0.0, 0.7, 0.9, 0.3, 0.6, 0.0]`
@@ -29,7 +42,8 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 求解 `P(t <= t' | s, d, r)`，表示在时间`t'`**之前**，从源节点s到目标节点d之前存在r类型的边的概率。
 
 最终inference：`t_start ~ t_end` 之间，从源节点s到目标节点d之前存在r类型的边的概率。
-`P(t_start <= t <= t_end | s, d, r) = P(t <= t_end | s, d, r) - P(t <= t_start | s, d, r)`
+
+**`P(t_start <= t <= t_end | s, d, r) = P(t <= t_end | s, d, r) - P(t <= t_start | s, d, r)`**
 
 ---
 
