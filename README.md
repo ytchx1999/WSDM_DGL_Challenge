@@ -100,13 +100,13 @@ You also need at least 64GB of CPU memory.  GPU is not required.
 
 1. Convert csv file to DGL graph objects.
 
-   ```
+   ```bash
    python3 csv2DGLgraph.py --dataset [A or B]
    ```
 
 2. Training.
 
-   ```
+   ```bash
    python3 base_pipeline.py --dataset [A or B]
    nohup python3 base_pipeline.py --dataset A > ./outputs/a.log 2>&1 &
    ```
