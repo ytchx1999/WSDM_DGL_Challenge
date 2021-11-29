@@ -18,6 +18,18 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 ## Baseline description
 
+#### 数据预处理
+A:
++ node_feat所有缺失值用max+1（417）来填充，包括csv的整行确实
++ train: ndata['feat']8列分别进行encoding，得到可学习的embedding后，stack+sum
++ g.edata['feat']进行手动广播，和边进行一一对应
++ ~~def emb_conccat() --> cat(src['emb'], edge_feat_emb, dst['emb])~~
+
+B: 
++ g.edata['feat']缺失值进行0填充
++ g.ndata['feat']聚合异构图中邻边的edata['feat']
+
+
 #### 异构图的构造
 
 A:
@@ -72,7 +84,7 @@ torch.Size([29457, 768])
 2. 对于每条边，`edge_emb = cat([src_node_emb, dst_node_emb])` 
 3. 正/负采样，得到正样本和负样本的 `timestamp` 和 `label`
 4. time encoding 得到 `time_emb`
-5. 对于每条边，`cat([edge_emb, tiam_emb])` 之后，过Linear层得到出现的概率 `probs`
+5. 对于每条边，`cat([edge_emb, time_emb])` 之后，过Linear层得到出现的概率 `probs`
 6. BCEWithLogitsLoss() + backward()更新参数
 
 #### 一些细节

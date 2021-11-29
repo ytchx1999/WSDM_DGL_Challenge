@@ -16,6 +16,19 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 import os
+import dgl.function as fn
+import random
+
+
+def set_seed(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    dgl.random.seed(seed)
 
 
 def get_args():
@@ -37,7 +50,7 @@ def get_args():
 
 
 class HeteroConv(nn.Module):
-    def __init__(self, etypes, n_layers, in_feats, hid_feats, activation, dropout=0.2):
+    def __init__(self, etypes, n_layers, in_feats, hid_feats, activation, dropout=0.2, args=None, edge_dim=None):
         super(HeteroConv, self).__init__()
         self.etypes = etypes
         self.n_layers = n_layers
@@ -45,10 +58,26 @@ class HeteroConv(nn.Module):
         self.hid_feats = hid_feats
         self.act = activation
         self.dropout = nn.Dropout(p=dropout, inplace=True)
+        self.args = args
         self.hconv_layers = nn.ModuleList()
         self.norms = nn.ModuleList()
         for i in range(n_layers+1):
             self.norms.append(nn.BatchNorm1d(hid_feats))
+
+        # A: feature and edge encoder
+        if self.args.dataset == 'A':
+            self.node_encoders = nn.ModuleList()
+            for i in range(in_feats):
+                self.node_encoders.append(nn.Embedding(420, embedding_dim=128, padding_idx=417))
+            in_feats = 128  # embedding dim
+
+            # self.edge_encoders = nn.ModuleList()
+            # for i in range(edge_dim):
+            #     self.edge_encoders.append(nn.Embedding(250, embedding_dim=10))
+            # edge_feats = 10
+            edge_feats = 0
+        else:
+            edge_feats = 0
 
         # input layer
         self.hconv_layers.append(self.build_hconv(in_feats, hid_feats, activation=self.act))
@@ -58,7 +87,7 @@ class HeteroConv(nn.Module):
         # output layer
         self.hconv_layers.append(self.build_hconv(hid_feats, hid_feats))  # activation None
 
-        self.fc1 = nn.Linear(hid_feats*2+10, hid_feats)
+        self.fc1 = nn.Linear(hid_feats*2+10+edge_feats, hid_feats)
         self.fc2 = nn.Linear(hid_feats, 1)
 
     def build_hconv(self, in_feats, out_feats, activation=None):
@@ -69,17 +98,35 @@ class HeteroConv(nn.Module):
 
     def forward(self, g, feat_key='feat'):
         h = g.ndata[feat_key]
+
+        # A: feature encoding
+        if self.args.dataset == 'A':
+            collect = []
+            for i in range(h.shape[1]):
+                collect.append(self.node_encoders[i](h[:, i]))
+            h = torch.stack(collect, dim=0).sum(dim=0)
+
         if not isinstance(h, dict):
-            h = {'Node': g.ndata[feat_key]}
+            h = {'Node': h}
         for i, layer in enumerate(self.hconv_layers):
             h = layer(g, h)
             for key in h.keys():
                 h[key] = self.norms[i](h[key])
         return h
 
-    def emb_concat(self, g, etype):
-        def cat(edges):
-            return {'emb_cat': torch.cat([edges.src['emb'], edges.dst['emb']], 1)}
+    def emb_concat(self, g, etype, args):
+        if self.args.dataset == 'A':
+            def cat(edges):
+                # efeat = edges.data['feat']
+                # collect = []
+                # for i, encoder in enumerate(self.edge_encoders):
+                #     collect.append(encoder(efeat[:, i]))
+                # efeat = torch.stack(collect, dim=0).sum(dim=0)
+                # return {'emb_cat': torch.cat([edges.src['emb'], efeat, edges.dst['emb']], 1)}
+                return {'emb_cat': torch.cat([edges.src['emb'], edges.dst['emb']], 1)}
+        else:
+            def cat(edges):
+                return {'emb_cat': torch.cat([edges.src['emb'], edges.dst['emb']], 1)}
         with g.local_scope():
             g.apply_edges(cat, etype=etype)
             emb_cat = g.edges[etype].data['emb_cat']
@@ -106,13 +153,23 @@ class HeteroConv(nn.Module):
 
 def train(args, g):
     if args.dataset == 'B':
-        dim_nfeat = args.emb_dim*2
+        # dim_nfeat = args.emb_dim*2
+        # for ntype in g.ntypes:
+        #     g.nodes[ntype].data['feat'] = torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.05
+        funcs = {}
+        for c_etype in g.canonical_etypes:
+            srctype, etype, dsttype = c_etype
+            funcs[etype] = (fn.copy_e('feat', 'feat_copy'), fn.mean('feat_copy', 'feat'))
+        # 将每个类型消息聚合的结果相加
+        g.multi_update_all(funcs, 'sum')
+        dim_nfeat = g.ndata['feat'][g.ntypes[0]].shape[1]
+
         for ntype in g.ntypes:
-            g.nodes[ntype].data['feat'] = torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.05
+            g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
 
-    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu)
+    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu, dropout=0.2, args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1])
 
     optimizer = torch.optim.AdamW(model.parameters(),
                                   lr=args.lr,
@@ -131,7 +188,7 @@ def train(args, g):
                 # Etype that end with 'reversed' is the reverse edges we added for GNN message passing.
                 # So we do not need to compute loss in training.
                 continue
-            emb_cat = model.emb_concat(g, etype)
+            emb_cat = model.emb_concat(g, etype, args)
             ts = g.edges[etype].data['ts']
             idx = torch.randperm(ts.shape[0])
             ts_shuffle = ts[idx]
@@ -183,11 +240,18 @@ def test(args, g, model):
     model.eval()
     test_csv = pd.read_csv(f'test_csvs/input_{args.dataset}_initial.csv', names=['src', 'dst', 'type', 'start_at', 'end_at', 'exist'])
     label = test_csv.exist.values
+    etype = test_csv.type.values
     src = test_csv.src.values
     dst = test_csv.dst.values
     start_at = torch.tensor(test_csv.start_at.values)
     end_at = torch.tensor(test_csv.end_at.values)
+
     if args.dataset == 'A':
+        # efeat = g.edges[str(etype)].data['feat'][src]
+        # collect = []
+        # for i, encoder in enumerate(model.edge_encoders):
+        #     collect.append(encoder(efeat[:, i]))
+        # efeat = torch.stack(collect, dim=0).sum(dim=0)
         emb_cats = torch.cat([g.ndata['emb'][src], g.ndata['emb'][dst]], 1)
     if args.dataset == 'B':
         emb_cats = torch.cat([g.ndata['emb']['User'][src], g.ndata['emb']['Item'][dst]], 1)
@@ -207,6 +271,7 @@ def test_and_save(args, g, model):
     model.eval()
     test_csv = pd.read_csv(f'test_csvs/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     # label = test_csv.exist.values
+    etype = test_csv.type.values
     src = test_csv.src.values
     dst = test_csv.dst.values
     start_at = torch.tensor(test_csv.start_at.values)
@@ -232,6 +297,7 @@ def test_and_save(args, g, model):
 if __name__ == "__main__":
     args = get_args()
     print(args, flush=True)
+    set_seed(0)
     if not os.path.exists('./outputs'):
         os.makedirs('./outputs')
     if args.dataset == 'B':

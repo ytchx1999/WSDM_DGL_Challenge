@@ -36,8 +36,11 @@ def csv2graph(args):
         node_feat_csv = pd.read_csv('train_csvs/node_features.csv', header=None)
         node_feat = node_feat_csv.values[:, 1:]
         node_idx = node_feat_csv.values[:, 0]
-        g.nodes[src_type].data['feat'] = torch.zeros((g.number_of_nodes(src_type), 8))
-        g.nodes[src_type].data['feat'][node_idx] = torch.FloatTensor(node_feat)
+        max_num = node_feat.max()
+        node_feat[node_feat == -1] = max_num + 1  # 处理缺失值-1，为之后的embedding做准备
+        g.nodes[src_type].data['feat'] = torch.zeros((g.number_of_nodes(src_type), 8)).fill_(max_num + 1).long()  # max fill
+        # g.nodes[src_type].data['feat'][node_idx] = torch.FloatTensor(node_feat)
+        g.nodes[src_type].data['feat'][node_idx] = torch.from_numpy(node_feat)
 
         # Assign Edge Type Feature as the graph`s label, which can be saved along with dgl.heterograph
         etype_feat_csv = pd.read_csv('train_csvs/edge_type_features.csv', header=None)
@@ -47,17 +50,23 @@ def csv2graph(args):
         for i, etype in enumerate(g.etypes):
             # etype_feat[etype] = etype_feat_tensor[i]
             etype_feat[str(i)] = etype_feat_tensor[i]
+        # edata['feat']
+        for event_type, records in heterogenous_group:
+            g.edges[str(event_type)].data['feat'] = torch.cat([etype_feat_tensor[event_type].reshape(1, -1)]*len(records), dim=0).long()
 
         dgl.save_graphs(f"./DGLgraphs/Dataset_{args.dataset}.bin", g, etype_feat)
 
     if args.dataset == 'B':
         etype_feat = None
+        feat_dim = 768
         # Assign Edge Feature
         for event_type, records in heterogenous_group:
             event_type = str(event_type)
             etype = (src_type, event_type, dst_type)
             if len(str(records[4].iloc[0])) > 3:
                 g.edges[etype].data['feat'] = (extract_edge_feature(records[4]))
+            else:
+                g.edges[etype].data['feat'] = torch.zeros(len(records), feat_dim)  # fill 0 with nan
         dgl.save_graphs(f"./DGLgraphs/Dataset_{args.dataset}.bin", g)
 
 
