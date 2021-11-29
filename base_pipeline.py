@@ -37,6 +37,7 @@ def get_args():
     parser.add_argument('--dataset', type=str, choices=["A", "B"], default='A', help='Dataset name')
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
+    parser.add_argument('--node_enc_dim', type=int, default=128, help='embedding dim of node feature in A')
     parser.add_argument("--emb_dim", type=int, default=10, help="number of hidden gnn units")
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
@@ -68,8 +69,8 @@ class HeteroConv(nn.Module):
         if self.args.dataset == 'A':
             self.node_encoders = nn.ModuleList()
             for i in range(in_feats):
-                self.node_encoders.append(nn.Embedding(420, embedding_dim=128, padding_idx=417))
-            in_feats = 128  # embedding dim
+                self.node_encoders.append(nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417))
+            in_feats = self.args.node_enc_dim  # embedding dim
 
             # self.edge_encoders = nn.ModuleList()
             # for i in range(edge_dim):

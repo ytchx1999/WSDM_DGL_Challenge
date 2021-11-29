@@ -18,6 +18,10 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 ## Baseline description
 
+| Date | Method | Initial AUC of A | Initial AUC of B |
+|:-:|:-:|:-:|:-:|
+| 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
+
 #### 数据预处理
 A:
 + node_feat所有缺失值用max+1（417）来填充，包括csv的整行确实
