@@ -120,6 +120,8 @@ def train(args, g):
     loss_fcn = nn.BCEWithLogitsLoss()
     loss_values = []
 
+    best_test_auc = 0
+
     for i in range(args.epochs):
         model.train()
         node_emb = model(g)
@@ -152,10 +154,21 @@ def train(args, g):
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        print('Loss:', loss_values[-1], flush=True)
+        # print('Loss:', loss_values[-1], flush=True)
         torch.cuda.empty_cache()
+
         # test every epoch
-        test(args, g, model)
+        test_auc = test(args, g, model)
+        print(f'Epoch: {i}, Loss: {loss_values[-1]}, test AUC: {round(test_auc, 5)}', flush=True)
+        if test_auc > best_test_auc:
+            best_test_auc = test_auc
+            # save ckpt
+            torch.save(model.state_dict(), f'./outputs/best_auc_ckpt.pkl')
+
+    print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
+    # load best model
+    model.load_state_dict(torch.load(f'./outputs/best_auc_ckpt.pkl'))
+
     return g, model
 
 
@@ -187,7 +200,9 @@ def test(args, g, model):
     exist_prob = end_prob - start_prob
 
     AUC = roc_auc_score(label, exist_prob)
-    print(f'AUC is {round(AUC,5)}', flush=True)
+    # print(f'AUC is {round(AUC,5)}', flush=True)
+
+    return AUC
 
 
 @torch.no_grad()
