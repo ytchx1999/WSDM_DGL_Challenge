@@ -163,11 +163,11 @@ def train(args, g):
         if test_auc > best_test_auc:
             best_test_auc = test_auc
             # save ckpt
-            torch.save(model.state_dict(), f'./outputs/best_auc_ckpt.pkl')
+            torch.save(model.state_dict(), './outputs/best_auc_ckpt.pkl')
 
     print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
     # load best model
-    model.load_state_dict(torch.load(f'./outputs/best_auc_ckpt.pkl'))
+    model.load_state_dict(torch.load('./outputs/best_auc_ckpt.pkl'))
 
     return g, model
 
