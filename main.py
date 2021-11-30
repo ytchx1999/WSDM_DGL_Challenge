@@ -18,6 +18,7 @@ from sklearn.metrics import roc_auc_score
 import os
 import dgl.function as fn
 import random
+from model import HeteroConv
 
 
 def set_seed(seed=0):
@@ -31,6 +32,25 @@ def set_seed(seed=0):
     dgl.random.seed(seed)
 
 
+def preprocess(args, directed_g):
+    # this function is used to add reverse edges for model computing
+    if args.dataset == 'A':
+        g = dgl.add_reverse_edges(directed_g, copy_edata=True)
+    if args.dataset == 'B':
+        graph_dict = {}
+        for (src_type, event_type, dst_type) in directed_g.canonical_etypes:
+            graph_dict[(src_type, event_type, dst_type)] = directed_g.edges(etype=(src_type, event_type, dst_type))
+            src_nodes_reversed = directed_g.edges(etype=(src_type, event_type, dst_type))[1]
+            dst_nodes_reversed = directed_g.edges(etype=(src_type, event_type, dst_type))[0]
+            graph_dict[(dst_type, event_type+'_reversed', src_type)] = (src_nodes_reversed, dst_nodes_reversed)
+        g = dgl.heterograph(graph_dict)
+        for etype in g.etypes:
+            g.edges[etype].data['ts'] = directed_g.edges[etype.split('_')[0]].data['ts']
+            if 'feat' in directed_g.edges[etype.split('_')[0]].data.keys():
+                g.edges[etype].data['feat'] = directed_g.edges[etype.split('_')[0]].data['feat']
+    return g
+
+
 def get_args():
     # Argument and global variables
     parser = argparse.ArgumentParser('Base')
@@ -39,6 +59,7 @@ def get_args():
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('--node_enc_dim', type=int, default=128, help='embedding dim of node feature in A')
     parser.add_argument("--emb_dim", type=int, default=10, help="number of hidden gnn units")
+    parser.add_argument("--time_dim", type=int, default=10, help="number of time encoding dims")
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
 
@@ -50,106 +71,26 @@ def get_args():
     return args
 
 
-class HeteroConv(nn.Module):
-    def __init__(self, etypes, n_layers, in_feats, hid_feats, activation, dropout=0.2, args=None, edge_dim=None):
-        super(HeteroConv, self).__init__()
-        self.etypes = etypes
-        self.n_layers = n_layers
-        self.in_feats = in_feats
-        self.hid_feats = hid_feats
-        self.act = activation
-        self.dropout = nn.Dropout(p=dropout, inplace=True)
-        self.args = args
-        self.hconv_layers = nn.ModuleList()
-        self.norms = nn.ModuleList()
-        for i in range(n_layers+1):
-            self.norms.append(nn.BatchNorm1d(hid_feats))
+def main():
+    args = get_args()
+    print(args, flush=True)
+    set_seed(0)
 
-        # A: feature and edge encoder
-        if self.args.dataset == 'A':
-            self.node_encoders = nn.ModuleList()
-            for i in range(in_feats):
-                self.node_encoders.append(nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417))
-            in_feats = self.args.node_enc_dim  # embedding dim
+    if not os.path.exists('./outputs'):
+        os.makedirs('./outputs')
+    if args.dataset == 'B':
+        g = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')[0][0]
+    elif args.dataset == 'A':
+        g, etype_feat = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')
+        g = g[0]
 
-            # self.edge_encoders = nn.ModuleList()
-            # for i in range(edge_dim):
-            #     self.edge_encoders.append(nn.Embedding(250, embedding_dim=10))
-            # edge_feats = 10
-            edge_feats = 0
-        else:
-            edge_feats = 0
+    g = preprocess(args, g)
+    g, model = train(args, g)
+    test(args, g, model)
 
-        # input layer
-        self.hconv_layers.append(self.build_hconv(in_feats, hid_feats, activation=self.act))
-        # hidden layers
-        for i in range(n_layers - 1):
-            self.hconv_layers.append(self.build_hconv(hid_feats, hid_feats, activation=self.act))
-        # output layer
-        self.hconv_layers.append(self.build_hconv(hid_feats, hid_feats))  # activation None
-
-        self.fc1 = nn.Linear(hid_feats*2+10+edge_feats, hid_feats)
-        self.fc2 = nn.Linear(hid_feats, 1)
-
-    def build_hconv(self, in_feats, out_feats, activation=None):
-        GNN_dict = {}
-        for event_type in self.etypes:
-            GNN_dict[event_type] = dglnn.SAGEConv(in_feats=in_feats, out_feats=out_feats, aggregator_type='mean', activation=activation)
-        return dglnn.HeteroGraphConv(GNN_dict, aggregate='sum')
-
-    def forward(self, g, feat_key='feat'):
-        h = g.ndata[feat_key]
-
-        # A: feature encoding
-        if self.args.dataset == 'A':
-            collect = []
-            for i in range(h.shape[1]):
-                collect.append(self.node_encoders[i](h[:, i]))
-            h = torch.stack(collect, dim=0).sum(dim=0)
-
-        if not isinstance(h, dict):
-            h = {'Node': h}
-        for i, layer in enumerate(self.hconv_layers):
-            h = layer(g, h)
-            for key in h.keys():
-                h[key] = self.norms[i](h[key])
-        return h
-
-    def emb_concat(self, g, etype, args):
-        if self.args.dataset == 'A':
-            def cat(edges):
-                # efeat = edges.data['feat']
-                # collect = []
-                # for i, encoder in enumerate(self.edge_encoders):
-                #     collect.append(encoder(efeat[:, i]))
-                # efeat = torch.stack(collect, dim=0).sum(dim=0)
-                # return {'emb_cat': torch.cat([edges.src['emb'], efeat, edges.dst['emb']], 1)}
-                return {'emb_cat': torch.cat([edges.src['emb'], edges.dst['emb']], 1)}
-        else:
-            def cat(edges):
-                return {'emb_cat': torch.cat([edges.src['emb'], edges.dst['emb']], 1)}
-        with g.local_scope():
-            g.apply_edges(cat, etype=etype)
-            emb_cat = g.edges[etype].data['emb_cat']
-        return emb_cat
-
-    def time_encoding(self, x, bits=10):
-        '''
-        This function is designed to encode a unix timestamp to a 10-dim vector. 
-        And it is only one of the many options to encode timestamps.
-        Users can also define other time encoding methods such as Neural Network based ones.
-        '''
-        inp = x.repeat(10, 1).transpose(0, 1)
-        div = torch.cat([torch.ones((x.shape[0], 1))*10**(bits-1-i) for i in range(bits)], 1)
-        return (((inp/div).int() % 10)*0.1).float()
-
-    def time_predict(self, node_emb_cat, time_emb):
-        h = torch.cat([node_emb_cat, time_emb], 1)
-        h = self.dropout(h)
-        h = self.fc1(h)
-        h = self.act(h)
-        h = self.fc2(h)
-        return h
+    print("Saving results...", flush=True)
+    test_and_save(args, g, model)
+    print("Done!", flush=True)
 
 
 def train(args, g):
@@ -170,7 +111,8 @@ def train(args, g):
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
 
-    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu, dropout=0.2, args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1])
+    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu, dropout=0.2,
+                       args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1], num_heads=1, time_dim=args.time_dim)
 
     optimizer = torch.optim.AdamW(model.parameters(),
                                   lr=args.lr,
@@ -215,25 +157,6 @@ def train(args, g):
         # test every epoch
         test(args, g, model)
     return g, model
-
-
-def preprocess(args, directed_g):
-    # this function is used to add reverse edges for model computing
-    if args.dataset == 'A':
-        g = dgl.add_reverse_edges(directed_g, copy_edata=True)
-    if args.dataset == 'B':
-        graph_dict = {}
-        for (src_type, event_type, dst_type) in directed_g.canonical_etypes:
-            graph_dict[(src_type, event_type, dst_type)] = directed_g.edges(etype=(src_type, event_type, dst_type))
-            src_nodes_reversed = directed_g.edges(etype=(src_type, event_type, dst_type))[1]
-            dst_nodes_reversed = directed_g.edges(etype=(src_type, event_type, dst_type))[0]
-            graph_dict[(dst_type, event_type+'_reversed', src_type)] = (src_nodes_reversed, dst_nodes_reversed)
-        g = dgl.heterograph(graph_dict)
-        for etype in g.etypes:
-            g.edges[etype].data['ts'] = directed_g.edges[etype.split('_')[0]].data['ts']
-            if 'feat' in directed_g.edges[etype.split('_')[0]].data.keys():
-                g.edges[etype].data['feat'] = directed_g.edges[etype.split('_')[0]].data['feat']
-    return g
 
 
 @torch.no_grad()
@@ -296,19 +219,4 @@ def test_and_save(args, g, model):
 
 
 if __name__ == "__main__":
-    args = get_args()
-    print(args, flush=True)
-    set_seed(0)
-    if not os.path.exists('./outputs'):
-        os.makedirs('./outputs')
-    if args.dataset == 'B':
-        g = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')[0][0]
-    elif args.dataset == 'A':
-        g, etype_feat = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')
-        g = g[0]
-    g = preprocess(args, g)
-    g, model = train(args, g)
-    test(args, g, model)
-    print("Saving results...", flush=True)
-    test_and_save(args, g, model)
-    print("Done!", flush=True)
+    main()

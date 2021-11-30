@@ -23,6 +23,9 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
 
 #### 数据预处理
+Time encoding：
++ 时间戳为10位十进制数，抽出每一位分别进行`nn.Embedding`的映射，然后从左到右进行concat得到`time_emb`。
+
 A:
 + node_feat所有缺失值用max+1（417）来填充，包括csv的整行确实
 + train: ndata['feat']8列分别进行encoding，得到可学习的embedding后，stack+sum
@@ -70,7 +73,7 @@ torch.Size([29457, 768])
 ```
 
 
-#### 时间编码 (time encoding)： 
+#### ~~时间编码 (time encoding)： ~~
 时间戳为10位十进制数，抽出每一位乘0.1组成一个10维向量。
 
 例如，时间戳为`1420079360`, encoding后变成10维向量为 `[0.1, 0.4, 0.2, 0.0, 0.0, 0.7, 0.9, 0.3, 0.6, 0.0]`
@@ -123,8 +126,8 @@ You also need at least 64GB of CPU memory.  GPU is not required.
 2. Training.
 
    ```bash
-   python3 base_pipeline.py --dataset [A or B]
-   nohup python3 base_pipeline.py --dataset A > ./outputs/a.log 2>&1 &
+   python3 main.py --dataset [A or B]
+   nohup python3 main.py --dataset A > ./outputs/a.log 2>&1 &
    ```
 
 ## Performance on Initial Test Set
