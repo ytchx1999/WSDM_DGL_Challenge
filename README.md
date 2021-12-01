@@ -138,6 +138,7 @@ To use the baseline you need to install [DGL](https://www.dgl.ai).
    nohup bash trainB.sh > ../outputs/b.log 2>&1 &
    ```
 
+#### Args
 ```bash
 usage: Base [-h] [--dataset {A,B}] [--lr LR] [--epochs EPOCHS]
             [--node_enc_dim NODE_ENC_DIM] [--emb_dim EMB_DIM]
