@@ -48,7 +48,7 @@ class HeteroConv(nn.Module):
             edge_feats = 0
 
         self.time_encoder = nn.ModuleList()
-        bits = 10
+        bits = 9
         for i in range(bits):
             self.time_encoder.append(nn.Embedding(20, embedding_dim=self.time_dim))  # time digit embedding dim
 
@@ -62,7 +62,11 @@ class HeteroConv(nn.Module):
 
         # self.fc1 = nn.Linear(hid_feats*2+10+edge_feats, hid_feats)
         # self.fc2 = nn.Linear(hid_feats, 1)
-        self.mlp = MLP(hid_feats * 2 * num_heads + 10*self.time_dim + edge_feats, hid_feats, 1, num_layers=3)
+        if self.args.dataset == 'A':
+            time_dim = (bits * self.time_dim)
+        else:
+            time_dim = 45
+        self.mlp = MLP(hid_feats * 2 * num_heads + time_dim + edge_feats, hid_feats, 1, num_layers=3)
 
     def build_hconv(self, in_feats, out_feats, activation=None):
         GNN_dict = {}
@@ -111,18 +115,29 @@ class HeteroConv(nn.Module):
 
     def time_encoding(self, x, bits=10):
         '''
-        This function is designed to encode a unix timestamp to a 10-dim vector. 
+        This function is designed to encode a unix timestamp to a 10-dim vector.
         And it is only one of the many options to encode timestamps.
         Users can also define other time encoding methods such as Neural Network based ones.
+
+        时间戳的第一位都是1，没用，所以舍弃
         '''
         inp = x.repeat(10, 1).transpose(0, 1)
         div = torch.cat([torch.ones((x.shape[0], 1), dtype=torch.long) * 10 ** (bits-1-i) for i in range(bits)], 1)
-        h = (inp // div) % 10
-        collect = []
-        for i, encoder in enumerate(self.time_encoder):
-            collect.append(encoder(h[:, i]))
-        h = torch.cat(collect, dim=1)
-        # (((inp/div).int() % 10)*0.1).float()
+        if self.args.dataset == 'A':
+            h = (inp // div) % 10
+            h = h[:, 1:]
+            collect = []
+            for i, encoder in enumerate(self.time_encoder):
+                collect.append(encoder(h[:, i]))
+            h = torch.cat(collect, dim=1)
+        else:
+            h = (((inp // div) % 10) * 0.1).float()
+            h = h[:, 1:]
+            collect = []
+            for i in range(h.shape[1]):
+                collect.append(h[:, i].repeat(h.shape[1] - i, 1).transpose(0, 1))
+            h = torch.cat(collect, dim=1)
+            # h = F.normalize(h, p=2, dim=1)
         return h
 
     def time_predict(self, node_emb_cat, time_emb):

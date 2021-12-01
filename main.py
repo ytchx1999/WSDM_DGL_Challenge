@@ -59,7 +59,7 @@ def get_args():
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('--node_enc_dim', type=int, default=128, help='embedding dim of node feature in A')
     parser.add_argument("--emb_dim", type=int, default=10, help="number of hidden gnn units")
-    parser.add_argument("--time_dim", type=int, default=10, help="number of time encoding dims")
+    parser.add_argument("--time_dim", type=int, default=3, help="number of time encoding dims")
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
 
@@ -105,6 +105,7 @@ def train(args, g):
         # 将每个类型消息聚合的结果相加
         g.multi_update_all(funcs, 'sum')
         dim_nfeat = g.ndata['feat'][g.ntypes[0]].shape[1]
+        args.time_dim = 1
 
         for ntype in g.ntypes:
             g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
@@ -122,7 +123,7 @@ def train(args, g):
 
     best_test_auc = 0
 
-    for i in range(args.epochs):
+    for epoch in range(args.epochs):
         model.train()
         node_emb = model(g)
         loss = 0
@@ -159,15 +160,15 @@ def train(args, g):
 
         # test every epoch
         test_auc = test(args, g, model)
-        print(f'Epoch: {i}, Loss: {loss_values[-1]}, test AUC: {round(test_auc, 5)}', flush=True)
+        print(f'Epoch: {epoch:02d}, Loss: {loss_values[-1]:.4f}, test AUC: {round(test_auc, 5)}', flush=True)
         if test_auc > best_test_auc:
             best_test_auc = test_auc
             # save ckpt
-            torch.save(model.state_dict(), './outputs/best_auc_ckpt.pkl')
+            torch.save(model.state_dict(), f'./outputs/best_auc_{args.dataset}.pkl')
 
     print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
     # load best model
-    model.load_state_dict(torch.load('./outputs/best_auc_ckpt.pkl'))
+    model.load_state_dict(torch.load(f'./outputs/best_auc_{args.dataset}.pkl'))
 
     return g, model
 

@@ -18,13 +18,18 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 ## Baseline description
 
-| Date | Method | Initial AUC of A | Initial AUC of B |
+| Date | Method | Best initial test AUC of A | Best initial test AUC of B |
 |:-:|:-:|:-:|:-:|
+| 2021.11.31 | new time encoding  | 0.57364 | 0.57479 |
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
+
+
 
 #### 数据预处理
 Time encoding：
-+ 时间戳为10位十进制数，抽出每一位分别进行`nn.Embedding`的映射，然后从左到右进行concat得到`time_emb`。
++ A: 时间戳为10位十进制数，抽出每一位分别进行`nn.Embedding`的映射，然后从左到右进行concat得到`time_emb`。
++ B: 时间戳为10位十进制数，从左到右优先级依次降低，每列重复10-i次，然后从左到右进行concat得到`time_emb`。
++ 均舍弃了原始时间戳的第一位`1`（2021年才是16开头的数）。
 
 A:
 + node_feat所有缺失值用max+1（417）来填充，包括csv的整行确实
@@ -128,6 +133,7 @@ You also need at least 64GB of CPU memory.  GPU is not required.
    ```bash
    python3 main.py --dataset [A or B]
    nohup python3 main.py --dataset A > ./outputs/a.log 2>&1 &
+   nohup python3 main.py --dataset B --epochs 50 > ./outputs/b.log 2>&1 &
    ```
 
 ## Performance on Initial Test Set
