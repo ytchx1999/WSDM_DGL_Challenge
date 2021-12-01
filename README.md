@@ -138,6 +138,51 @@ To use the baseline you need to install [DGL](https://www.dgl.ai).
    nohup bash trainB.sh > ../outputs/b.log 2>&1 &
    ```
 
+```bash
+usage: Base [-h] [--dataset {A,B}] [--lr LR] [--epochs EPOCHS]
+            [--node_enc_dim NODE_ENC_DIM] [--emb_dim EMB_DIM]
+            [--time_dim TIME_DIM] [--n_layers N_LAYERS]
+            [--weight_decay WEIGHT_DECAY] [--gpu GPU]
+            [--batch_size BATCH_SIZE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dataset {A,B}       Dataset name
+  --lr LR               learning rate
+  --epochs EPOCHS       Number of epochs
+  --node_enc_dim NODE_ENC_DIM
+                        embedding dim of node feature in A
+  --emb_dim EMB_DIM     number of hidden gnn units
+  --time_dim TIME_DIM   number of time encoding dims
+  --n_layers N_LAYERS   number of hidden gnn layers
+  --weight_decay WEIGHT_DECAY
+                        Weight for L2 loss
+  --gpu GPU             number of GPU
+  --batch_size BATCH_SIZE
+                        number of GPU
+usage: Base [-h] [--dataset {A,B}] [--lr LR] [--epochs EPOCHS]
+            [--node_enc_dim NODE_ENC_DIM] [--emb_dim EMB_DIM]
+            [--time_dim TIME_DIM] [--n_layers N_LAYERS]
+            [--weight_decay WEIGHT_DECAY] [--gpu GPU]
+            [--batch_size BATCH_SIZE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dataset {A,B}       Dataset name
+  --lr LR               learning rate
+  --epochs EPOCHS       Number of epochs
+  --node_enc_dim NODE_ENC_DIM
+                        embedding dim of node feature in A
+  --emb_dim EMB_DIM     number of hidden gnn units
+  --time_dim TIME_DIM   number of time encoding dims
+  --n_layers N_LAYERS   number of hidden gnn layers
+  --weight_decay WEIGHT_DECAY
+                        Weight for L2 loss
+  --gpu GPU             number of GPU
+  --batch_size BATCH_SIZE
+                        number of GPU
+```
+
 ## Performance on Initial Test Set
 
 The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B.
