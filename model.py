@@ -48,7 +48,7 @@ class HeteroConv(nn.Module):
             edge_feats = 0
 
         self.time_encoder = nn.ModuleList()
-        bits = 9
+        bits = 10
         for i in range(bits):
             self.time_encoder.append(nn.Embedding(20, embedding_dim=self.time_dim))  # time digit embedding dim
 
@@ -75,11 +75,12 @@ class HeteroConv(nn.Module):
             GNN_dict[event_type] = SAGEConv(in_feats=in_feats, out_feats=out_feats, aggregator_type='mean', activation=activation)
         return dglnn.HeteroGraphConv(GNN_dict, aggregate='sum')
 
-    def forward(self, g, feat_key='feat'):
-        h = g.ndata[feat_key]
+    def forward(self, blocks, feat_key='feat'):
+        h = blocks[0].ndata[feat_key]
 
         # A: feature encoding
         if self.args.dataset == 'A':
+            h = h['Node']
             collect = []
             for i in range(h.shape[1]):
                 collect.append(self.node_encoders[i](h[:, i]))
@@ -88,7 +89,7 @@ class HeteroConv(nn.Module):
         if not isinstance(h, dict):
             h = {'Node': h}
         for i, layer in enumerate(self.hconv_layers):
-            h = layer(g, h)
+            h = layer(blocks[i], h)
             for key in h.keys():
                 h[key] = self.norms[i](h[key].flatten(1, -1))
                 # h[key] = self.act(h[key])
@@ -122,10 +123,10 @@ class HeteroConv(nn.Module):
         时间戳的第一位都是1，没用，所以舍弃
         '''
         inp = x.repeat(10, 1).transpose(0, 1)
-        div = torch.cat([torch.ones((x.shape[0], 1), dtype=torch.long) * 10 ** (bits-1-i) for i in range(bits)], 1)
+        div = torch.cat([torch.ones((x.shape[0], 1), dtype=torch.long) * 10 ** (bits-1-i) for i in range(bits)], 1).to(inp.device)
         if self.args.dataset == 'A':
             h = (inp // div) % 10
-            h = h[:, 1:]
+            # h = h[:, 1:]
             collect = []
             for i, encoder in enumerate(self.time_encoder):
                 collect.append(encoder(h[:, i]))

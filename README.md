@@ -120,7 +120,9 @@ predict `p(t < t' | s, d, r)`, i.e. the probability that an edge with type `r` e
 
 To use the baseline you need to install [DGL](https://www.dgl.ai).
 
-You also need at least 64GB of CPU memory.  GPU is not required.
+~~ou also need at least 64GB of CPU memory.  GPU is not required.~~
+
+**mini-batch train in GPU, full batch inference in CPU!**
 
 1. Convert csv file to DGL graph objects.
 
@@ -131,9 +133,9 @@ You also need at least 64GB of CPU memory.  GPU is not required.
 2. Training.
 
    ```bash
-   python3 main.py --dataset [A or B]
-   nohup python3 main.py --dataset A > ./outputs/a.log 2>&1 &
-   nohup python3 main.py --dataset B --epochs 50 > ./outputs/b.log 2>&1 &
+   cd scripts/
+   nohup bash trainA.sh > ../outputs/a.log 2>&1 &
+   nohup bash trainB.sh > ../outputs/b.log 2>&1 &
    ```
 
 ## Performance on Initial Test Set

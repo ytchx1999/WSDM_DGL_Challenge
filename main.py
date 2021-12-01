@@ -19,6 +19,10 @@ import os
 import dgl.function as fn
 import random
 from model import HeteroConv
+from dgl.dataloading import EdgeDataLoader, NodeDataLoader, MultiLayerFullNeighborSampler, MultiLayerNeighborSampler
+from tqdm import tqdm
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def set_seed(seed=0):
@@ -62,6 +66,8 @@ def get_args():
     parser.add_argument("--time_dim", type=int, default=3, help="number of time encoding dims")
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
+    parser.add_argument("--gpu", type=int, default=1, help="number of GPU")
+    parser.add_argument("--batch_size", type=int, default=10000, help="number of GPU")
 
     try:
         args = parser.parse_args()
@@ -112,62 +118,99 @@ def train(args, g):
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
 
+    device = torch.device(f'cuda:{args.gpu}' if torch.cuda.is_available() else 'cpu')
+    # g = g.to(device)
+
+    sampler = MultiLayerFullNeighborSampler(args.n_layers + 1)
+    train_nid_dict = {ntype: g.nodes(ntype) for ntype in g.ntypes}
+    train_loader = NodeDataLoader(
+        g, train_nid_dict, sampler,
+        batch_size=args.batch_size,
+        shuffle=True,
+        drop_last=False,
+        num_workers=4
+    )
+
     model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu, dropout=0.2,
                        args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1], num_heads=1, time_dim=args.time_dim)
+    model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(),
                                   lr=args.lr,
                                   weight_decay=args.weight_decay)
-    loss_fcn = nn.BCEWithLogitsLoss()
+    loss_fcn = nn.BCEWithLogitsLoss().to(device)
     loss_values = []
 
     best_test_auc = 0
 
     for epoch in range(args.epochs):
         model.train()
-        node_emb = model(g)
-        loss = 0
+
+        ndata_emb = {}
         for ntype in g.ntypes:
-            g.nodes[ntype].data['emb'] = node_emb[ntype]
-        for i, etype in enumerate(g.etypes):
-            if etype.split('_')[-1] == 'reversed':
-                # Etype that end with 'reversed' is the reverse edges we added for GNN message passing.
-                # So we do not need to compute loss in training.
-                continue
-            emb_cat = model.emb_concat(g, etype, args)
-            ts = g.edges[etype].data['ts']
-            idx = torch.randperm(ts.shape[0])
-            ts_shuffle = ts[idx]
-            neg_label = torch.zeros_like(ts)
-            neg_label[ts_shuffle >= ts] = 1
+            ndata_emb[ntype] = torch.zeros((g.nodes[ntype].data['feat'].shape[0], args.emb_dim))
 
-            time_emb = model.time_encoding(ts)
-            time_emb_shuffle = model.time_encoding(ts_shuffle)
+        for input_nodes, output_nodes, blocks in tqdm(train_loader, desc=f'Epoch {epoch}'):
+            blocks = [block.to(device) for block in blocks]
+            node_emb = model(blocks)
+            loss = 0
 
-            pos_exist_prob = model.time_predict(emb_cat, time_emb).squeeze()
-            neg_exist_prob = model.time_predict(emb_cat, time_emb_shuffle).squeeze()
+            sub_g = dgl.node_subgraph(g, {ntype: blocks[-1].dstnodes(ntype).cpu() for ntype in blocks[-1].dsttypes}).to(device)
+            for ntype in sub_g.ntypes:
+                sub_g.nodes[ntype].data['emb'] = node_emb[ntype]
+                if not isinstance(output_nodes, dict):
+                    ndata_emb[ntype][output_nodes] = node_emb[ntype].detach().cpu()
+                else:
+                    ndata_emb[ntype][output_nodes[ntype]] = node_emb[ntype].detach().cpu()
 
-            probs = torch.cat([pos_exist_prob, neg_exist_prob], 0)
-            label = torch.cat([torch.ones_like(ts), neg_label], 0).float()
-            loss += loss_fcn(probs, label)/len(g.etypes)
+            total = 0
+            for i, etype in enumerate(sub_g.etypes):
+                if etype.split('_')[-1] == 'reversed':
+                    # Etype that end with 'reversed' is the reverse edges we added for GNN message passing.
+                    # So we do not need to compute loss in training.
+                    continue
+                if sub_g.edges[etype].data['feat'].shape[0] == 0:
+                    continue
+                total += 1
+                emb_cat = model.emb_concat(sub_g, etype, args)
+                ts = sub_g.edges[etype].data['ts']
+                idx = torch.randperm(ts.shape[0]).to(device)
+                ts_shuffle = ts[idx]
+                neg_label = torch.zeros_like(ts).to(device)
+                neg_label[ts_shuffle >= ts] = 1
 
-        loss_values.append(loss.item())
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-        # print('Loss:', loss_values[-1], flush=True)
-        torch.cuda.empty_cache()
+                time_emb = model.time_encoding(ts)
+                time_emb_shuffle = model.time_encoding(ts_shuffle)
 
+                pos_exist_prob = model.time_predict(emb_cat, time_emb).squeeze()
+                neg_exist_prob = model.time_predict(emb_cat, time_emb_shuffle).squeeze()
+
+                probs = torch.cat([pos_exist_prob, neg_exist_prob], 0)
+                label = torch.cat([torch.ones_like(ts), neg_label], 0).float()
+                loss += loss_fcn(probs, label)  # /len(sub_g.etypes)
+
+            loss /= float(total)
+            loss_values.append(loss.item())
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            # print('Loss:', loss_values[-1], flush=True)
+            torch.cuda.empty_cache()
+
+        for ntype in g.ntypes:
+            g.nodes[ntype].data['emb'] = ndata_emb[ntype]
         # test every epoch
-        test_auc = test(args, g, model)
+        test_auc = test(args, g, model.cpu())
         print(f'Epoch: {epoch:02d}, Loss: {loss_values[-1]:.4f}, test AUC: {round(test_auc, 5)}', flush=True)
         if test_auc > best_test_auc:
             best_test_auc = test_auc
             # save ckpt
             torch.save(model.state_dict(), f'./outputs/best_auc_{args.dataset}.pkl')
+        model.to(device)
 
     print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
     # load best model
+    model.cpu()
     model.load_state_dict(torch.load(f'./outputs/best_auc_{args.dataset}.pkl'))
 
     return g, model
