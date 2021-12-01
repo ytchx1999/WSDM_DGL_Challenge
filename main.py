@@ -67,7 +67,7 @@ def get_args():
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
     parser.add_argument("--gpu", type=int, default=1, help="number of GPU")
-    parser.add_argument("--batch_size", type=int, default=10000, help="number of GPU")
+    parser.add_argument("--batch_size", type=int, default=10000, help="batch size")
 
     try:
         args = parser.parse_args()
