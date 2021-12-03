@@ -3,7 +3,7 @@ cd "$(dirname $0)"
 python3 ../main.py \
 --dataset B \
 --gpu 1 \
---epochs 50 \
+--epochs 25 \
 --time_dim 1 \
 --n_layers 2 \
 --emb_dim 10 \
