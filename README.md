@@ -23,6 +23,7 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
 | 2021.11.31 | new time encoding  | 0.57364 | 0.57479 |
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
+| ----       | raw baseline | 0.511 | 0.510 |
 
 
 
