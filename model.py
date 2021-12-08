@@ -16,12 +16,13 @@ from dgl.nn.pytorch import SAGEConv, GATConv
 
 
 class HeteroConv(nn.Module):
-    def __init__(self, etypes, n_layers, in_feats, hid_feats, activation, dropout=0.2, args=None, edge_dim=None, num_heads=1, time_dim=1):
+    def __init__(self, etypes, n_layers, in_feats, hid_feats, emb_feats, activation, dropout=0.2, args=None, edge_dim=None, num_heads=1, time_dim=1):
         super(HeteroConv, self).__init__()
         self.etypes = etypes
         self.n_layers = n_layers
         self.in_feats = in_feats
         self.hid_feats = hid_feats
+        self.emb_feats = emb_feats
         self.act = activation
         self.dropout = nn.Dropout(p=dropout, inplace=True)
         self.args = args
@@ -29,8 +30,9 @@ class HeteroConv(nn.Module):
         self.time_dim = time_dim
         self.hconv_layers = nn.ModuleList()
         self.norms = nn.ModuleList()
-        for i in range(n_layers+1):
+        for i in range(n_layers):
             self.norms.append(nn.BatchNorm1d(hid_feats * num_heads))
+        self.norms.append(nn.BatchNorm1d(emb_feats * num_heads))
 
         # A: feature and edge encoder
         if self.args.dataset == 'A':
@@ -53,12 +55,12 @@ class HeteroConv(nn.Module):
             self.time_encoder.append(nn.Embedding(20, embedding_dim=self.time_dim))  # time digit embedding dim
 
         # input layer
-        self.hconv_layers.append(self.build_hconv(in_feats, hid_feats, activation=self.act))
+        self.hconv_layers.append(self.build_hconv(in_feats, hid_feats, activation=self.act, num_heads=self.num_heads))
         # hidden layers
         for i in range(n_layers - 1):
-            self.hconv_layers.append(self.build_hconv(hid_feats * num_heads, hid_feats, activation=self.act))
+            self.hconv_layers.append(self.build_hconv(hid_feats * num_heads, hid_feats, activation=self.act, num_heads=self.num_heads))
         # output layer
-        self.hconv_layers.append(self.build_hconv(hid_feats * num_heads, hid_feats))  # activation None
+        self.hconv_layers.append(self.build_hconv(hid_feats * num_heads, emb_feats, num_heads=self.num_heads))  # activation None
 
         # self.fc1 = nn.Linear(hid_feats*2+10+edge_feats, hid_feats)
         # self.fc2 = nn.Linear(hid_feats, 1)
@@ -66,13 +68,13 @@ class HeteroConv(nn.Module):
             time_dim = (bits * self.time_dim)
         else:
             time_dim = 45
-        self.mlp = MLP(hid_feats * 2 * num_heads + time_dim + edge_feats, hid_feats, 1, num_layers=3)
+        self.mlp = MLP(emb_feats * 2 * num_heads + time_dim + edge_feats, emb_feats, 1, num_layers=3)
 
-    def build_hconv(self, in_feats, out_feats, activation=None):
+    def build_hconv(self, in_feats, out_feats, activation=None, num_heads=1):
         GNN_dict = {}
         for event_type in self.etypes:
-            # GNN_dict[event_type] = GATConv(in_feats=in_feats, out_feats=out_feats, num_heads=self.num_heads, residual=True, activation=activation)
-            GNN_dict[event_type] = SAGEConv(in_feats=in_feats, out_feats=out_feats, aggregator_type='mean', activation=activation)
+            GNN_dict[event_type] = GATConv(in_feats=in_feats, out_feats=out_feats, num_heads=num_heads, residual=True, activation=activation)
+            # GNN_dict[event_type] = SAGEConv(in_feats=in_feats, out_feats=out_feats, aggregator_type='mean', activation=activation)
         return dglnn.HeteroGraphConv(GNN_dict, aggregate='sum')
 
     def forward(self, blocks, feat_key='feat'):
@@ -141,13 +143,13 @@ class HeteroConv(nn.Module):
             # h = F.normalize(h, p=2, dim=1)
         return h
 
-    def time_predict(self, node_emb_cat, time_emb):
+    def time_predict(self, node_emb_cat, time_emb, args):
         h = torch.cat([node_emb_cat, time_emb], 1)
         h = self.dropout(h)
         # h = self.fc1(h)
         # h = self.act(h)
         # h = self.fc2(h)
-        h = self.mlp(h)
+        h = self.mlp(h, args)
         return h
 
 
@@ -171,10 +173,11 @@ class MLP(nn.Module):
 
         self.lins.append(nn.Linear(hidden_dim, output_dim))
 
-    def forward(self, x):
+    def forward(self, x, args):
         for i in range(self.num_layers - 1):
             x = F.relu(self.lins[i](x))
-            # x = self.bns[i](x)  # batch norm
-            # x = F.dropout(x, p=0.2, training=self.training)
+            if args.dataset == 'B':
+                x = self.bns[i](x)  # batch norm
+                x = F.dropout(x, p=0.2, training=self.training)
         x = self.lins[-1](x)
         return x

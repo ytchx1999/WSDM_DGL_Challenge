@@ -62,12 +62,14 @@ def get_args():
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('--node_enc_dim', type=int, default=128, help='embedding dim of node feature in A')
-    parser.add_argument("--emb_dim", type=int, default=10, help="number of hidden gnn units")
+    parser.add_argument("--hid_dim", type=int, default=32, help="number of hidden gnn units")
+    parser.add_argument("--emb_dim", type=int, default=10, help="number of final gnn embedding units")
     parser.add_argument("--time_dim", type=int, default=3, help="number of time encoding dims")
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
     parser.add_argument("--gpu", type=int, default=1, help="number of GPU")
     parser.add_argument("--batch_size", type=int, default=20000, help="batch size")
+    parser.add_argument("--num_heads", type=int, default=1, help="batch size")
 
     try:
         args = parser.parse_args()
@@ -131,8 +133,8 @@ def train(args, g):
         num_workers=4
     )
 
-    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.emb_dim, F.relu, dropout=0.2,
-                       args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1], num_heads=1, time_dim=args.time_dim)
+    model = HeteroConv(g.etypes, args.n_layers, dim_nfeat, args.hid_dim, args.emb_dim, F.relu, dropout=0.2,
+                       args=args, edge_dim=g.edata['feat'][g.canonical_etypes[0]].shape[1], num_heads=args.num_heads, time_dim=args.time_dim)
     model = model.to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(),
@@ -148,7 +150,7 @@ def train(args, g):
 
         ndata_emb = {}
         for ntype in g.ntypes:
-            ndata_emb[ntype] = torch.zeros((g.nodes[ntype].data['feat'].shape[0], args.emb_dim))
+            ndata_emb[ntype] = torch.zeros((g.nodes[ntype].data['feat'].shape[0], args.emb_dim * args.num_heads))
 
         for input_nodes, output_nodes, blocks in tqdm(train_loader, desc=f'Epoch {epoch}'):
             blocks = [block.to(device) for block in blocks]
@@ -182,8 +184,8 @@ def train(args, g):
                 time_emb = model.time_encoding(ts)
                 time_emb_shuffle = model.time_encoding(ts_shuffle)
 
-                pos_exist_prob = model.time_predict(emb_cat, time_emb).squeeze()
-                neg_exist_prob = model.time_predict(emb_cat, time_emb_shuffle).squeeze()
+                pos_exist_prob = model.time_predict(emb_cat, time_emb, args).squeeze()
+                neg_exist_prob = model.time_predict(emb_cat, time_emb_shuffle, args).squeeze()
 
                 probs = torch.cat([pos_exist_prob, neg_exist_prob], 0)
                 label = torch.cat([torch.ones_like(ts), neg_label], 0).float()
@@ -239,8 +241,8 @@ def test(args, g, model):
 
     start_time_emb = model.time_encoding(start_at)
     end_time_emb = model.time_encoding(end_at)
-    start_prob = model.time_predict(emb_cats, start_time_emb).squeeze()
-    end_prob = model.time_predict(emb_cats, end_time_emb).squeeze()
+    start_prob = model.time_predict(emb_cats, start_time_emb, args).squeeze()
+    end_prob = model.time_predict(emb_cats, end_time_emb, args).squeeze()
     exist_prob = end_prob - start_prob
 
     AUC = roc_auc_score(label, exist_prob)
@@ -266,8 +268,8 @@ def test_and_save(args, g, model):
 
     start_time_emb = model.time_encoding(start_at)
     end_time_emb = model.time_encoding(end_at)
-    start_prob = model.time_predict(emb_cats, start_time_emb).squeeze()
-    end_prob = model.time_predict(emb_cats, end_time_emb).squeeze()
+    start_prob = model.time_predict(emb_cats, start_time_emb, args).squeeze()
+    end_prob = model.time_predict(emb_cats, end_time_emb, args).squeeze()
     exist_prob = end_prob - start_prob
 
     exist_prob = exist_prob.reshape(-1, 1).numpy()

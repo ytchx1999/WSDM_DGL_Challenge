@@ -20,12 +20,14 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 | Date | Method | **Best** initial test AUC of **A** | **Best** initial test AUC of **B** |
 |:-:|:-:|:-:|:-:|
+| 2021.12.08 | R-GAT  | 0.62282 | 0.60292 |
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
 | 2021.11.31 | new time encoding  | 0.57364 | 0.57479 |
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
 | ----       | raw baseline | 0.511 | 0.510 |
 
-
+#### 一些问题
+模型在原始测试集上达到最好效果后，随着epoch的增加，模型逐渐退化，在原始测试机上的性能变差
 
 #### 数据预处理
 Time encoding：
@@ -138,6 +140,11 @@ To use the baseline you need to install [DGL](https://www.dgl.ai).
    cd scripts/
    nohup bash trainA.sh > ../outputs/a.log 2>&1 &
    nohup bash trainB.sh > ../outputs/b.log 2>&1 &
+   ```
+3. Result.
+   ```bash
+   cd outputs/
+   zip output.zip output_A.csv output_B.csv
    ```
 
 #### Args
