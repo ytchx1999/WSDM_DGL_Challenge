@@ -20,14 +20,14 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 | Date | Method | **Best** initial test AUC of **A** | **Best** initial test AUC of **B** |
 |:-:|:-:|:-:|:-:|
-| 2021.12.08 | R-GAT  | 0.62282 | 0.60292 |
+| 2021.12.08 | R-GAT (中期提交版本) | 0.62721 | 0.60426 |
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
 | 2021.11.31 | new time encoding  | 0.57364 | 0.57479 |
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
 | ----       | raw baseline | 0.511 | 0.510 |
 
 #### 一些问题
-模型在原始测试集上达到最好效果后，随着epoch的增加，模型逐渐退化，在原始测试机上的性能变差
+参数敏感，只在initial上拟合，未必在最终的test上拟合。
 
 #### 数据预处理
 Time encoding：
@@ -144,7 +144,7 @@ To use the baseline you need to install [DGL](https://www.dgl.ai).
 3. Result.
    ```bash
    cd outputs/
-   zip output.zip output_A.csv output_B.csv
+   zip output_middle.zip output_A.csv output_B.csv
    ```
 
 #### Args
@@ -179,17 +179,34 @@ The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B.
 ## Tree
 ```bash
 .
-├── base_pipeline.py
 ├── csv2DGLgraph.py
 ├── DGLgraphs
 │   ├── Dataset_A.bin
 │   └── Dataset_B.bin
+├── explore.ipynb
+├── LICENSE
+├── main.py
+├── model.py
 ├── outputs
-│   └── a.log
+│   ├── a.log
+│   ├── best_auc_A.pkl
+│   ├── best_auc_B.pkl
+│   ├── b.log
+│   ├── output_A.csv
+│   ├── output_B.csv
+│   └── output.zip
+├── __pycache__
+│   └── model.cpython-37.pyc
 ├── README 2.md
 ├── README.md
+├── scripts
+│   ├── result.sh
+│   ├── trainA.sh
+│   └── trainB.sh
 ├── test_csvs
+│   ├── input_A.csv
 │   ├── input_A_initial.csv
+│   ├── input_B.csv
 │   └── input_B_initial.csv
 └── train_csvs
     ├── edges_train_A.csv
@@ -197,5 +214,5 @@ The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B.
     ├── edge_type_features.csv
     └── node_features.csv
 
-4 directories, 13 files
+6 directories, 28 files
 ```

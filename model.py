@@ -39,7 +39,7 @@ class HeteroConv(nn.Module):
             self.node_encoders = nn.ModuleList()
             for i in range(in_feats):
                 self.node_encoders.append(nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417))
-            in_feats = self.args.node_enc_dim  # embedding dim
+            in_feats = self.args.node_enc_dim  # * in_feats  # embedding dim
 
             # self.edge_encoders = nn.ModuleList()
             # for i in range(edge_dim):
@@ -87,6 +87,7 @@ class HeteroConv(nn.Module):
             for i in range(h.shape[1]):
                 collect.append(self.node_encoders[i](h[:, i]))
             h = torch.stack(collect, dim=0).sum(dim=0)
+            # h = torch.cat(collect, dim=1)
 
         if not isinstance(h, dict):
             h = {'Node': h}

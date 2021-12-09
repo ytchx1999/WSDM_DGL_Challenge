@@ -68,8 +68,9 @@ def get_args():
     parser.add_argument("--n_layers", type=int, default=2, help="number of hidden gnn layers")
     parser.add_argument("--weight_decay", type=float, default=5e-4, help="Weight for L2 loss")
     parser.add_argument("--gpu", type=int, default=1, help="number of GPU")
+    parser.add_argument("--seed", type=int, default=0, help="number of seed")
     parser.add_argument("--batch_size", type=int, default=20000, help="batch size")
-    parser.add_argument("--num_heads", type=int, default=1, help="batch size")
+    parser.add_argument("--num_heads", type=int, default=1, help="number of heads")
 
     try:
         args = parser.parse_args()
@@ -82,7 +83,7 @@ def get_args():
 def main():
     args = get_args()
     print(args, flush=True)
-    set_seed(0)
+    set_seed(args.seed)
 
     if not os.path.exists('./outputs'):
         os.makedirs('./outputs')
@@ -116,6 +117,13 @@ def train(args, g):
         args.time_dim = 1
 
         for ntype in g.ntypes:
+            # ndata_mean = g.nodes[ntype].data['feat'].mean(dim=0)
+            # feat = g.nodes[ntype].data['feat']
+            # feat_dim = feat.shape[1]
+            # for i in range(feat.shape[0]):
+            #     if torch.equal(feat[i], torch.zeros((feat_dim,))):
+            #         feat[i] = ndata_mean
+            # g.nodes[ntype].data['feat'] = feat
             g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
