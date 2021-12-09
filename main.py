@@ -59,6 +59,10 @@ def get_args():
     # Argument and global variables
     parser = argparse.ArgumentParser('Base')
     parser.add_argument('--dataset', type=str, choices=["A", "B"], default='A', help='Dataset name')
+    parser.add_argument('--train_path', type=str, default='./train_csvs', help='train data path')
+    parser.add_argument('--test_path', type=str, default='./test_csvs', help='test data path')
+    parser.add_argument('--graph_path', type=str, default='./DGLgraphs', help='dgl graph path')
+    parser.add_argument('--output_path', type=str, default='./outputs', help='output path')
     parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('--node_enc_dim', type=int, default=128, help='embedding dim of node feature in A')
@@ -85,12 +89,12 @@ def main():
     print(args, flush=True)
     set_seed(args.seed)
 
-    if not os.path.exists('./outputs'):
-        os.makedirs('./outputs')
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
     if args.dataset == 'B':
-        g = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')[0][0]
+        g = dgl.load_graphs(f'{args.graph_path}/Dataset_{args.dataset}.bin')[0][0]
     elif args.dataset == 'A':
-        g, etype_feat = dgl.load_graphs(f'DGLgraphs/Dataset_{args.dataset}.bin')
+        g, etype_feat = dgl.load_graphs(f'{args.graph_path}/Dataset_{args.dataset}.bin')
         g = g[0]
 
     g = preprocess(args, g)
@@ -215,13 +219,13 @@ def train(args, g):
         if test_auc > best_test_auc:
             best_test_auc = test_auc
             # save ckpt
-            torch.save(model.state_dict(), f'./outputs/best_auc_{args.dataset}.pkl')
+            torch.save(model.state_dict(), f'{args.output_path}/best_auc_{args.dataset}.pkl')
         model.to(device)
 
     print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
     # load best model
     model.cpu()
-    model.load_state_dict(torch.load(f'./outputs/best_auc_{args.dataset}.pkl'))
+    model.load_state_dict(torch.load(f'{args.output_path}/best_auc_{args.dataset}.pkl'))
 
     return g, model
 
@@ -229,7 +233,7 @@ def train(args, g):
 @torch.no_grad()
 def test(args, g, model):
     model.eval()
-    test_csv = pd.read_csv(f'test_csvs/input_{args.dataset}_initial.csv', names=['src', 'dst', 'type', 'start_at', 'end_at', 'exist'])
+    test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}_initial.csv', names=['src', 'dst', 'type', 'start_at', 'end_at', 'exist'])
     label = test_csv.exist.values
     etype = test_csv.type.values
     src = test_csv.src.values
@@ -262,7 +266,7 @@ def test(args, g, model):
 @torch.no_grad()
 def test_and_save(args, g, model):
     model.eval()
-    test_csv = pd.read_csv(f'test_csvs/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
+    test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     # label = test_csv.exist.values
     etype = test_csv.type.values
     src = test_csv.src.values
@@ -281,7 +285,7 @@ def test_and_save(args, g, model):
     exist_prob = end_prob - start_prob
 
     exist_prob = exist_prob.reshape(-1, 1).numpy()
-    np.savetxt(f'outputs/output_{args.dataset}.csv', exist_prob, delimiter=None)
+    np.savetxt(f'{args.output_path}/output_{args.dataset}.csv', exist_prob, delimiter=None)
 
     # AUC = roc_auc_score(label, exist_prob)
     # print(f'AUC is {round(AUC,5)}', flush=True)

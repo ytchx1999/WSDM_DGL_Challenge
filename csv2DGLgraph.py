@@ -17,7 +17,7 @@ def csv2graph(args):
     else:
         print(' Input parameters error')
 
-    edge_csv = pd.read_csv(f'train_csvs/edges_train_{args.dataset}.csv', header=None)
+    edge_csv = pd.read_csv(f'{args.train_path}/edges_train_{args.dataset}.csv', header=None)
 
     heterogenous_group = edge_csv.groupby(2)
     graph_dict = {}
@@ -34,7 +34,7 @@ def csv2graph(args):
 
     if args.dataset == 'A':
         # Assign Node feature in to graph
-        node_feat_csv = pd.read_csv('train_csvs/node_features.csv', header=None)
+        node_feat_csv = pd.read_csv(f'{args.train_path}/node_features.csv', header=None)
         node_feat = node_feat_csv.values[:, 1:]
         node_idx = node_feat_csv.values[:, 0]
         max_num = node_feat.max()
@@ -44,7 +44,7 @@ def csv2graph(args):
         g.nodes[src_type].data['feat'][node_idx] = torch.from_numpy(node_feat)
 
         # Assign Edge Type Feature as the graph`s label, which can be saved along with dgl.heterograph
-        etype_feat_csv = pd.read_csv('train_csvs/edge_type_features.csv', header=None)
+        etype_feat_csv = pd.read_csv(f'{args.train_path}/edge_type_features.csv', header=None)
         etype_feat_tensor = torch.FloatTensor(etype_feat_csv.values[:, 1:])
         etype_feat = {}
         # bug fix
@@ -55,7 +55,7 @@ def csv2graph(args):
         for event_type, records in heterogenous_group:
             g.edges[str(event_type)].data['feat'] = torch.cat([etype_feat_tensor[event_type].reshape(1, -1)]*len(records), dim=0).long()
 
-        dgl.save_graphs(f"./DGLgraphs/Dataset_{args.dataset}.bin", g, etype_feat)
+        dgl.save_graphs(f"{args.graph_path}/Dataset_{args.dataset}.bin", g, etype_feat)
 
     if args.dataset == 'B':
         etype_feat = None
@@ -68,7 +68,7 @@ def csv2graph(args):
                 g.edges[etype].data['feat'] = (extract_edge_feature(records[4]))
             else:
                 g.edges[etype].data['feat'] = torch.zeros(len(records), feat_dim)  # fill 0 with nan
-        dgl.save_graphs(f"./DGLgraphs/Dataset_{args.dataset}.bin", g)
+        dgl.save_graphs(f"{args.graph_path}/Dataset_{args.dataset}.bin", g)
 
 
 def extract_edge_feature(records):
@@ -92,6 +92,9 @@ def get_args():
     # Argument and global variables
     parser = argparse.ArgumentParser('csv2DGLgraph')
     parser.add_argument('--dataset', type=str, choices=["A", "B"], default='A', help='Dataset name')
+    parser.add_argument('--train_path', type=str, default='./train_csvs', help='train data path')
+    parser.add_argument('--test_path', type=str, default='./test_csvs', help='test data path')
+    parser.add_argument('--graph_path', type=str, default='./DGLgraphs', help='dgl graph path')
     try:
         args = parser.parse_args()
     except:
@@ -103,14 +106,18 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    if not os.path.exists('train_csvs'):
-        os.system('wget -P train_csvs https://data.dgl.ai/dataset/WSDMCup2022/edges_train_A.csv.gz')
-        os.system('wget -P train_csvs https://data.dgl.ai/dataset/WSDMCup2022/node_features.csv.gz')
-        os.system('wget -P train_csvs https://data.dgl.ai/dataset/WSDMCup2022/edge_type_features.csv.gz')
-        os.system('wget -P train_csvs https://data.dgl.ai/dataset/WSDMCup2022/edges_train_B.csv.gz')
-        os.system('gzip -d train_csvs/*.gz')
-    if not os.path.exists('test_csvs'):
-        os.system('wget -P test_csvs https://data.dgl.ai/dataset/WSDMCup2022/input_A_initial.csv.gz')
-        os.system('wget -P test_csvs https://data.dgl.ai/dataset/WSDMCup2022/input_B_initial.csv.gz')
-        os.system('gzip -d test_csvs/*.gz')
+    if not os.path.exists(args.train_path):
+        os.system(f'wget -P {args.train_path} https://data.dgl.ai/dataset/WSDMCup2022/edges_train_A.csv.gz')
+        os.system(f'wget -P {args.train_path} https://data.dgl.ai/dataset/WSDMCup2022/node_features.csv.gz')
+        os.system(f'wget -P {args.train_path} https://data.dgl.ai/dataset/WSDMCup2022/edge_type_features.csv.gz')
+        os.system(f'wget -P {args.train_path} https://data.dgl.ai/dataset/WSDMCup2022/edges_train_B.csv.gz')
+        os.system(f'gzip -d {args.train_path}/*.gz')
+    if not os.path.exists(args.test_path):
+        # 初始test
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/input_A_initial.csv.gz')
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/input_B_initial.csv.gz')
+        # 中期test
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/intermediate/input_A.csv.gz')
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/intermediate/input_B.csv.gz')
+        os.system(f'gzip -d {args.test_path}/*.gz')
     csv2graph(args)
