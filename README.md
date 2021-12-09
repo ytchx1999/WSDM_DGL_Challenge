@@ -149,27 +149,41 @@ To use the baseline you need to install [DGL](https://www.dgl.ai).
 
 #### Args
 ```bash
-usage: Base [-h] [--dataset {A,B}] [--lr LR] [--epochs EPOCHS]
-            [--node_enc_dim NODE_ENC_DIM] [--emb_dim EMB_DIM]
-            [--time_dim TIME_DIM] [--n_layers N_LAYERS]
-            [--weight_decay WEIGHT_DECAY] [--gpu GPU]
-            [--batch_size BATCH_SIZE]
+usage: Base [-h] [--dataset {A,B}] [--train_path TRAIN_PATH]
+            [--test_path TEST_PATH] [--graph_path GRAPH_PATH]
+            [--output_path OUTPUT_PATH] [--lr LR] [--epochs EPOCHS]
+            [--node_enc_dim NODE_ENC_DIM] [--hid_dim HID_DIM]
+            [--emb_dim EMB_DIM] [--time_dim TIME_DIM] [--n_layers N_LAYERS]
+            [--weight_decay WEIGHT_DECAY] [--gpu GPU] [--seed SEED]
+            [--batch_size BATCH_SIZE] [--num_heads NUM_HEADS]
 
 optional arguments:
   -h, --help            show this help message and exit
   --dataset {A,B}       Dataset name
+  --train_path TRAIN_PATH
+                        train data path
+  --test_path TEST_PATH
+                        test data path
+  --graph_path GRAPH_PATH
+                        dgl graph path
+  --output_path OUTPUT_PATH
+                        output path
   --lr LR               learning rate
   --epochs EPOCHS       Number of epochs
   --node_enc_dim NODE_ENC_DIM
                         embedding dim of node feature in A
-  --emb_dim EMB_DIM     number of hidden gnn units
+  --hid_dim HID_DIM     number of hidden gnn units
+  --emb_dim EMB_DIM     number of final gnn embedding units
   --time_dim TIME_DIM   number of time encoding dims
   --n_layers N_LAYERS   number of hidden gnn layers
   --weight_decay WEIGHT_DECAY
                         Weight for L2 loss
   --gpu GPU             number of GPU
+  --seed SEED           number of seed
   --batch_size BATCH_SIZE
                         batch size
+  --num_heads NUM_HEADS
+                        number of heads
 ```
 
 ## Performance on Initial Test Set
