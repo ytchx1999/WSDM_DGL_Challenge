@@ -34,6 +34,10 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 + A: initial (9999 querys) 和 middle (50000 querys) 的数据分布基本一致
 + B: initial (5704 querys) 和 middle (50000 querys) 的数据分布在etype上, timestamp基本一致，src 和 dst有一些差异，不过src 和 dst的分布比较平均（点的个数没有特别多的）
 
+#### 训练集的数据缺失问题
++ A: node_feat 缺失占比为 **76%** ！
++ B: edge_feat 缺失占比为 **57%** !
+
 #### 数据预处理
 Time encoding：
 + A: 时间戳为10位十进制数，抽出每一位分别进行`nn.Embedding`的映射，然后从左到右进行concat得到`time_emb`。
@@ -87,10 +91,10 @@ torch.Size([29457, 768])
 ```
 
 
-#### ~~时间编码 (time encoding)： ~~
-时间戳为10位十进制数，抽出每一位乘0.1组成一个10维向量。
+#### ~~时间编码 (time encoding)：~~
+~~时间戳为10位十进制数，抽出每一位乘0.1组成一个10维向量。~~
 
-例如，时间戳为`1420079360`, encoding后变成10维向量为 `[0.1, 0.4, 0.2, 0.0, 0.0, 0.7, 0.9, 0.3, 0.6, 0.0]`
+~~例如，时间戳为`1420079360`, encoding后变成10维向量为 `[0.1, 0.4, 0.2, 0.0, 0.0, 0.7, 0.9, 0.3, 0.6, 0.0]`~~
 
 #### 负采样时间戳（random index）--> `t'`
 + `t <= t', label = 1`
