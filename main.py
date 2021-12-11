@@ -93,20 +93,21 @@ def main():
         os.makedirs(args.output_path)
     if args.dataset == 'B':
         g = dgl.load_graphs(f'{args.graph_path}/Dataset_{args.dataset}.bin')[0][0]
+        etype_feat = None
     elif args.dataset == 'A':
         g, etype_feat = dgl.load_graphs(f'{args.graph_path}/Dataset_{args.dataset}.bin')
         g = g[0]
 
     g = preprocess(args, g)
-    g, model = train(args, g)
-    test(args, g, model)
+    g, model = train(args, g, etype_feat)
+    test(args, g, model, etype_feat)
 
     print("Saving results...", flush=True)
-    test_and_save(args, g, model)
+    test_and_save(args, g, model, etype_feat)
     print("Done!", flush=True)
 
 
-def train(args, g):
+def train(args, g, etype_feat=None):
     if args.dataset == 'B':
         # dim_nfeat = args.emb_dim*2
         # for ntype in g.ntypes:
@@ -214,7 +215,7 @@ def train(args, g):
         for ntype in g.ntypes:
             g.nodes[ntype].data['emb'] = ndata_emb[ntype]
         # test every epoch
-        test_auc = test(args, g, model.cpu())
+        test_auc = test(args, g, model.cpu(), etype_feat)
         print(f'Epoch: {epoch:02d}, Loss: {loss_values[-1]:.4f}, test AUC: {round(test_auc, 5)}', flush=True)
         if test_auc > best_test_auc:
             best_test_auc = test_auc
@@ -231,7 +232,7 @@ def train(args, g):
 
 
 @torch.no_grad()
-def test(args, g, model):
+def test(args, g, model, etype_feat=None):
     model.eval()
     test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}_initial.csv', names=['src', 'dst', 'type', 'start_at', 'end_at', 'exist'])
     label = test_csv.exist.values
@@ -242,11 +243,17 @@ def test(args, g, model):
     end_at = torch.tensor(test_csv.end_at.values)
 
     if args.dataset == 'A':
-        # efeat = g.edges[str(etype)].data['feat'][src]
+        # collect = []
+        # for e in etype:
+        #     collect.append(etype_feat[str(e)].reshape(1, -1))
+        # efeat = torch.cat(collect, dim=0)
+
         # collect = []
         # for i, encoder in enumerate(model.edge_encoders):
         #     collect.append(encoder(efeat[:, i]))
         # efeat = torch.stack(collect, dim=0).sum(dim=0)
+
+        # emb_cats = torch.cat([g.ndata['emb'][src], efeat, g.ndata['emb'][dst]], 1)
         emb_cats = torch.cat([g.ndata['emb'][src], g.ndata['emb'][dst]], 1)
     if args.dataset == 'B':
         emb_cats = torch.cat([g.ndata['emb']['User'][src], g.ndata['emb']['Item'][dst]], 1)
@@ -264,7 +271,7 @@ def test(args, g, model):
 
 
 @torch.no_grad()
-def test_and_save(args, g, model):
+def test_and_save(args, g, model, etype_feat=None):
     model.eval()
     test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     # label = test_csv.exist.values

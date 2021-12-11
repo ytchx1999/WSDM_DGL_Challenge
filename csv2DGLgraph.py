@@ -50,7 +50,7 @@ def csv2graph(args):
         # bug fix
         for i, etype in enumerate(g.etypes):
             # etype_feat[etype] = etype_feat_tensor[i]
-            etype_feat[str(i)] = etype_feat_tensor[i]
+            etype_feat[str(i)] = etype_feat_tensor[i].long()
         # edata['feat']
         for event_type, records in heterogenous_group:
             g.edges[str(event_type)].data['feat'] = torch.cat([etype_feat_tensor[event_type].reshape(1, -1)]*len(records), dim=0).long()

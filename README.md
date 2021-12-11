@@ -29,6 +29,11 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 #### 一些问题
 参数敏感，只在initial上拟合，未必在最终的test上拟合。
 
+#### 关于 initial test 和 middle test 的数据分布问题
+分布是否一致关系到initial test上的参考价值，因此 `explore.ipynb` 探索了每个query的etype, timestamp, src, dst
++ A: initial (9999 querys) 和 middle (50000 querys) 的数据分布基本一致
++ B: initial (5704 querys) 和 middle (50000 querys) 的数据分布在etype上, timestamp基本一致，src 和 dst有一些差异，不过src 和 dst的分布比较平均（点的个数没有特别多的）
+
 #### 数据预处理
 Time encoding：
 + A: 时间戳为10位十进制数，抽出每一位分别进行`nn.Embedding`的映射，然后从左到右进行concat得到`time_emb`。
