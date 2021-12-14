@@ -13,6 +13,7 @@ import os
 import dgl.function as fn
 import random
 from dgl.nn.pytorch import SAGEConv, GATConv
+# from GATv2Conv import GATv2Conv
 
 
 class HeteroConv(nn.Module):
@@ -73,6 +74,7 @@ class HeteroConv(nn.Module):
     def build_hconv(self, in_feats, out_feats, activation=None, num_heads=1):
         GNN_dict = {}
         for event_type in self.etypes:
+            # GNN_dict[event_type] = GATv2Conv(in_feats=in_feats, out_feats=out_feats, num_heads=num_heads, residual=True, activation=activation)
             GNN_dict[event_type] = GATConv(in_feats=in_feats, out_feats=out_feats, num_heads=num_heads, residual=True, activation=activation)
             # GNN_dict[event_type] = SAGEConv(in_feats=in_feats, out_feats=out_feats, aggregator_type='mean', activation=activation)
         return dglnn.HeteroGraphConv(GNN_dict, aggregate='sum')

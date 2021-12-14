@@ -129,6 +129,7 @@ def train(args, g, etype_feat=None):
             #     if torch.equal(feat[i], torch.zeros((feat_dim,))):
             #         feat[i] = ndata_mean
             # g.nodes[ntype].data['feat'] = feat
+            # torch.manual_seed(args.seed + 1)  # randn结果可复现
             g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
