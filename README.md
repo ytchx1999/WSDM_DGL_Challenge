@@ -24,12 +24,14 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 | Date | Method | **Best** initial test AUC of **A** | **Best** initial test AUC of **B** |
 |:-:|:-:|:-:|:-:|
-| 2021.12.14 | R-GAT (中期提交版本) | 0.63458 | 0.61346 |
+| 2021.12.16 | R-GAT (中期提交版本) | 0.6357 | 0.61544 |
 | 2021.12.08 | R-GAT | 0.62721 | 0.60426 |
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
 | 2021.11.31 | new time encoding  | 0.57364 | 0.57479 |
 | 2021.11.29 | 数据预处理 | 0.52814 | 0.53116 |
 | ----       | raw baseline | 0.511 | 0.510 |
+
+<!-- | 2021.12.14 | R-GAT (中期提交版本) | 0.63458 | 0.61346 | -->
 
 #### 一些问题
 参数敏感，只在initial上拟合，未必在最终的test上拟合。B不同的run，结果稍有不同。

@@ -10,6 +10,6 @@ python3 ../main.py \
 --emb_dim 10 \
 --hid_dim 30 \
 --lr 1e-3 \
---batch_size 50000 \
+--batch_size 60000 \
 --weight_decay 0. \
 --num_heads 3

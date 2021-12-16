@@ -11,6 +11,6 @@ python3 ../main.py \
 --hid_dim 10 \
 --node_enc_dim 128 \
 --lr 1e-3 \
---batch_size 25000 \
+--batch_size 27000 \
 --weight_decay 0. \
 --num_heads 3
