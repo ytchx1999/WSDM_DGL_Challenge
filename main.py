@@ -217,7 +217,7 @@ def train(args, g, etype_feat=None):
         for ntype in g.ntypes:
             g.nodes[ntype].data['emb'] = ndata_emb[ntype]
         # test every epoch
-        test_auc = test(args, g, model.cpu(), etype_feat)
+        test_auc = test(args, g, model.cpu(), etype_feat)  # , t_score
         print(f'Epoch: {epoch:02d}, Loss: {loss_values[-1]:.4f}, test AUC: {round(test_auc, 5)}', flush=True)
         if test_auc > best_test_auc:
             best_test_auc = test_auc
@@ -225,7 +225,7 @@ def train(args, g, etype_feat=None):
             torch.save(model.state_dict(), f'{args.output_path}/best_auc_{args.dataset}.pkl')
         model.to(device)
 
-    print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)
+    print(f'Best test AUC: {round(best_test_auc, 5)}', flush=True)  # , T-score: {round(t_score, 5)}
     # load best model
     model.cpu()
     model.load_state_dict(torch.load(f'{args.output_path}/best_auc_{args.dataset}.pkl'))
@@ -268,8 +268,13 @@ def test(args, g, model, etype_feat=None):
 
     AUC = roc_auc_score(label, exist_prob)
     # print(f'AUC is {round(AUC,5)}', flush=True)
+    # auc_list = []
+    # for i in range(label.shape[0]):
+    #     auc_list.append(roc_auc_score(label[i], exist_prob[i]))
+    # auc_list = np.array(auc_list)
+    # t_score = ((AUC - np.mean(auc_list)) / np.std(auc_list)) * 0.1 + 0.5
 
-    return AUC
+    return AUC  # , t_score
 
 
 @torch.no_grad()
@@ -281,7 +286,7 @@ def test_and_save(args, g, model, mode='middle', etype_feat=None):
     if mode == 'middle':
         test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}_middle.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     else:
-        est_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
+        test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     # label = test_csv.exist.values
     etype = test_csv.type.values
     src = test_csv.src.values
