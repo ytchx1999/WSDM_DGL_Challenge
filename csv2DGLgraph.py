@@ -120,4 +120,10 @@ if __name__ == "__main__":
         os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/intermediate/input_A.csv.gz')
         os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/intermediate/input_B.csv.gz')
         os.system(f'gzip -d {args.test_path}/*.gz')
+        os.system(f'mv {args.test_path}/input_A.csv {args.test_path}/input_A_middle.csv')
+        os.system(f'mv {args.test_path}/input_B.csv {args.test_path}/input_B_middle.csv')
+        # final test
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/final/input_A.csv.gz')
+        os.system(f'wget -P {args.test_path} https://data.dgl.ai/dataset/WSDMCup2022/final/input_B.csv.gz')
+        os.system(f'gzip -d {args.test_path}/*.gz')
     csv2graph(args)

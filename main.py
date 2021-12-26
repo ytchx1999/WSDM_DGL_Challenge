@@ -103,7 +103,8 @@ def main():
     test(args, g, model, etype_feat)
 
     print("Saving results...", flush=True)
-    test_and_save(args, g, model, etype_feat)
+    test_and_save(args, g, model, mode='middle', etype_feat=etype_feat)
+    test_and_save(args, g, model, mode='test', etype_feat=etype_feat)
     print("Done!", flush=True)
 
 
@@ -272,9 +273,15 @@ def test(args, g, model, etype_feat=None):
 
 
 @torch.no_grad()
-def test_and_save(args, g, model, etype_feat=None):
+def test_and_save(args, g, model, mode='middle', etype_feat=None):
     model.eval()
-    test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
+    if not os.path.exists(f'{args.output_path}/middle'):
+        os.makedirs(f'{args.output_path}/middle')
+
+    if mode == 'middle':
+        test_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}_middle.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
+    else:
+        est_csv = pd.read_csv(f'{args.test_path}/input_{args.dataset}.csv', names=['src', 'dst', 'type', 'start_at', 'end_at'])
     # label = test_csv.exist.values
     etype = test_csv.type.values
     src = test_csv.src.values
@@ -293,7 +300,10 @@ def test_and_save(args, g, model, etype_feat=None):
     exist_prob = end_prob - start_prob
 
     exist_prob = exist_prob.reshape(-1, 1).numpy()
-    np.savetxt(f'{args.output_path}/output_{args.dataset}.csv', exist_prob, delimiter=None)
+    if mode == 'middle':
+        np.savetxt(f'{args.output_path}/middle/output_{args.dataset}.csv', exist_prob, delimiter=None)
+    else:
+        np.savetxt(f'{args.output_path}/output_{args.dataset}.csv', exist_prob, delimiter=None)
 
     # AUC = roc_auc_score(label, exist_prob)
     # print(f'AUC is {round(AUC,5)}', flush=True)
