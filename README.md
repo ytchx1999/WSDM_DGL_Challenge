@@ -27,6 +27,9 @@ tqdm
 ## GPU
 + Tesla V100 (32GB) * 1
 
+## 关键路径
+[查看项目的整个目录树.](#Tree)
+
 ## Usage
 
 不需要手动下载数据集，直接运行程序即可。
@@ -105,9 +108,9 @@ optional arguments:
 
 | Date | Method | middle test AUC of **A** | middle test AUC of **B** |
 |:-:|:-:|:-:|:-:|
-| 2022.01.15 | R-GAT (最终提交版本) | 0.494439 | 0.501796 |
+| 2022.01.15 | R-GAT (最终提交版本) | 0.494439 | 0.497759 |
 | 2021.12.16 | R-GAT (中期提交版本) | 0.498004853 | 0.505898455 |
-感觉是在middle test上过拟合了。。就随便交一个吧。。
+感觉是在initial test上过拟合了。。就随便交一个吧。。
 
 
 <!-- ![12.23](./12.13.png) -->
@@ -116,7 +119,7 @@ optional arguments:
 
 | Date | Method | **Best** initial test AUC of **A** | **Best** initial test AUC of **B** |
 |:-:|:-:|:-:|:-:|
-| 2022.01.15 | R-GAT (最终提交版本) | 0.6428 | 0.61544 |
+| 2022.01.15 | R-GAT (最终提交版本) | 0.6428 | 0.67784 |
 | 2021.12.16 | R-GAT (中期提交版本) | 0.6357 | 0.61544 |
 | 2021.12.08 | R-GAT | 0.62721 | 0.60426 |
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
@@ -239,7 +242,19 @@ The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B. -->
 ## Tree
 ```bash
 .
+├── 12.13.png
 ├── csv2DGLgraph.py
+├── data
+│   ├── DGLgraphs
+│   │   └── Dataset_A.bin
+│   ├── test_csvs
+│   │   ├── input_A_initial.csv
+│   │   └── input_B_initial.csv
+│   └── train_csvs
+│       ├── edges_train_A.csv
+│       ├── edges_train_B.csv
+│       ├── edge_type_features.csv
+│       └── node_features.csv
 ├── DGLgraphs
 │   ├── Dataset_A.bin
 │   └── Dataset_B.bin
@@ -252,27 +267,30 @@ The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B. -->
 │   ├── best_auc_A.pkl
 │   ├── best_auc_B.pkl
 │   ├── b.log
+│   ├── middle
+│   │   ├── output_A.csv
+│   │   ├── output_B.csv
+│   │   └── output_middle.zip
 │   ├── output_A.csv
 │   ├── output_B.csv
+│   ├── output_middle.zip
 │   └── output.zip
-├── __pycache__
-│   └── model.cpython-37.pyc
 ├── README 2.md
 ├── README.md
 ├── scripts
-│   ├── result.sh
 │   ├── trainA.sh
 │   └── trainB.sh
 ├── test_csvs
 │   ├── input_A.csv
 │   ├── input_A_initial.csv
+│   ├── input_A_middle.csv
 │   ├── input_B.csv
-│   └── input_B_initial.csv
-└── train_csvs
-    ├── edges_train_A.csv
-    ├── edges_train_B.csv
-    ├── edge_type_features.csv
-    └── node_features.csv
-
-6 directories, 28 files
+│   ├── input_B_initial.csv
+│   └── input_B_middle.csv
+├── train_csvs
+│   ├── edges_train_A.csv
+│   ├── edges_train_B.csv
+│   ├── edge_type_features.csv
+│   └── node_features.csv
+└── tt.ipynb
 ```
