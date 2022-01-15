@@ -13,6 +13,7 @@ import os
 import dgl.function as fn
 import random
 from dgl.nn.pytorch import SAGEConv, GATConv
+import time
 # from GATv2Conv import GATv2Conv
 
 
@@ -37,9 +38,10 @@ class HeteroConv(nn.Module):
 
         # A: feature and edge encoder
         if self.args.dataset == 'A':
-            self.node_encoders = nn.ModuleList()
-            for i in range(in_feats):
-                self.node_encoders.append(nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417))
+            # self.node_encoders = nn.ModuleList()
+            # for i in range(in_feats):
+            #     self.node_encoders.append(nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417))
+            self.node_encoders = nn.Embedding(420, embedding_dim=self.args.node_enc_dim, padding_idx=417)
             in_feats = self.args.node_enc_dim  # * in_feats  # embedding dim
 
             # self.edge_encoders = nn.ModuleList()
@@ -53,7 +55,8 @@ class HeteroConv(nn.Module):
         self.time_encoder = nn.ModuleList()
         bits = 10
         for i in range(bits):
-            self.time_encoder.append(nn.Embedding(20, embedding_dim=self.time_dim))  # time digit embedding dim
+            self.time_encoder.append(nn.Embedding(65, embedding_dim=self.time_dim))  # time digit embedding dim
+        # self.time_encoder = nn.Embedding(65, embedding_dim=self.time_dim)
 
         # input layer
         self.hconv_layers.append(self.build_hconv(in_feats, hid_feats, activation=self.act, num_heads=self.num_heads))
@@ -68,7 +71,7 @@ class HeteroConv(nn.Module):
         if self.args.dataset == 'A':
             time_dim = (bits * self.time_dim)
         else:
-            time_dim = 45
+            time_dim = 45  # (bits * self.time_dim)
         self.mlp = MLP(emb_feats * 2 * num_heads + time_dim + edge_feats, emb_feats, 1, num_layers=3)
 
     def build_hconv(self, in_feats, out_feats, activation=None, num_heads=1):
@@ -87,7 +90,8 @@ class HeteroConv(nn.Module):
             h = h['Node']
             collect = []
             for i in range(h.shape[1]):
-                collect.append(self.node_encoders[i](h[:, i]))
+                # collect.append(self.node_encoders[i](h[:, i]))
+                collect.append(self.node_encoders(h[:, i]))
             h = torch.stack(collect, dim=0).sum(dim=0)
             # h = torch.cat(collect, dim=1)
 
@@ -135,14 +139,28 @@ class HeteroConv(nn.Module):
             collect = []
             for i, encoder in enumerate(self.time_encoder):
                 collect.append(encoder(h[:, i]))
+            # for i in range(bits):
+            #     collect.append(self.time_encoder(h[:, i]))
             h = torch.cat(collect, dim=1)
+            # tm = time.localtime(x)
+            # tm[0] %= 100
+            # collect = []
+            # for i in range(6):
+            #     collect.append(self.time_encoder[i](tm[]))
         else:
+            h = (inp // div) % 10
             h = (((inp // div) % 10) * 0.1).float()
             h = h[:, 1:]
             collect = []
             for i in range(h.shape[1]):
                 collect.append(h[:, i].repeat(h.shape[1] - i, 1).transpose(0, 1))
             h = torch.cat(collect, dim=1)
+            # collect = []
+            # for i, encoder in enumerate(self.time_encoder):
+            #     collect.append(encoder(h[:, i]))
+            # # for i in range(bits):
+            # #     collect.append(self.time_encoder(h[:, i]))
+            # h = torch.cat(collect, dim=1)
             # h = F.normalize(h, p=2, dim=1)
         return h
 

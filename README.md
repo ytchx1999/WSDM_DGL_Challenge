@@ -1,29 +1,122 @@
 # WSDM_DGL_Challenge
-WSDM Cup 2022: Temporal Link Prediction Task (https://www.dgl.ai/WSDM2022-Challenge/).
+[[WSDM Cup 2022: Temporal Link Prediction Task](https://www.dgl.ai/WSDM2022-Challenge/)] | [Team: MegaTron]
 
-# WSDM 2022 Large-scale Temporal Graph Link Prediction - Baseline and Initial Test Set
+<!-- # WSDM 2022 Large-scale Temporal Graph Link Prediction - Baseline and Initial Test Set -->
 
-[WSDM Cup Website link](https://www.wsdm-conference.org/2022/call-for-wsdm-cup-proposals/)
+[[WSDM Cup Website link](https://www.wsdm-conference.org/2022/call-for-wsdm-cup-proposals/)] | [[Link to this challenge](https://www.dgl.ai/WSDM2022-Challenge/)]
 
-[Link to this challenge](https://www.dgl.ai/WSDM2022-Challenge/)
-
-This branch offers
+<!-- This branch offers
 
 * An initial test set having 10,000 test examples for each dataset, together with their labels in `exist` column.  Note that this test set only serves for development purposes.  So
   * The intermediate and final dataset will **not** contain the `exist` column.
   * This is **not** the intermediate dataset we will be using for ranking solutions.
 * A simple baseline that trains on both datasets.
 
-Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDMCup2022/input_A_initial.csv.gz) [Dataset B](https://data.dgl.ai/dataset/WSDMCup2022/input_B_initial.csv.gz)
+Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDMCup2022/input_A_initial.csv.gz) [Dataset B](https://data.dgl.ai/dataset/WSDMCup2022/input_B_initial.csv.gz) -->
 
-## Baseline description
+## Environment
+```bash
+dgl-cu102==0.7.2
+pytorch==1.7.0
+sklearn
+pandas
+numpy
+tqdm
+...
+```
+## GPU
++ Tesla V100 (32GB) * 1
 
-![12.23](./12.13.png)
+## Usage
 
-由于12.13测试集发生改变，所以重新跑了一下，结果见表格12.14
+不需要手动下载数据集，直接运行程序即可。
+
+<!-- To use the baseline you need to install [DGL](https://www.dgl.ai).
+
+~~ou also need at least 64GB of CPU memory.  GPU is not required.~~ -->
+
+**mini-batch train in GPU, full batch inference in CPU.**
+
+1. Convert csv file to DGL graph objects.
+
+   ```bash
+   python3 csv2DGLgraph.py --dataset A
+   python3 csv2DGLgraph.py --dataset B
+   ```
+
+2. Training.
+
+   ```bash
+   cd scripts/
+   bash trainA.sh 
+   bash trainB.sh 
+   ```
+3. Result.
+   ```bash
+   # middle test
+   cd outputs/middle/
+   zip output_middle.zip output_A.csv output_B.csv
+   # final test
+   cd outputs/
+   zip output_final.zip output_A.csv output_B.csv
+   ```
+
+<!-- #### Args
+```bash
+usage: Base [-h] [--dataset {A,B}] [--train_path TRAIN_PATH]
+            [--test_path TEST_PATH] [--graph_path GRAPH_PATH]
+            [--output_path OUTPUT_PATH] [--lr LR] [--epochs EPOCHS]
+            [--node_enc_dim NODE_ENC_DIM] [--hid_dim HID_DIM]
+            [--emb_dim EMB_DIM] [--time_dim TIME_DIM] [--n_layers N_LAYERS]
+            [--weight_decay WEIGHT_DECAY] [--gpu GPU] [--seed SEED]
+            [--batch_size BATCH_SIZE] [--num_heads NUM_HEADS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --dataset {A,B}       Dataset name
+  --train_path TRAIN_PATH
+                        train data path
+  --test_path TEST_PATH
+                        test data path
+  --graph_path GRAPH_PATH
+                        dgl graph path
+  --output_path OUTPUT_PATH
+                        output path
+  --lr LR               learning rate
+  --epochs EPOCHS       Number of epochs
+  --node_enc_dim NODE_ENC_DIM
+                        embedding dim of node feature in A
+  --hid_dim HID_DIM     number of hidden gnn units
+  --emb_dim EMB_DIM     number of final gnn embedding units
+  --time_dim TIME_DIM   number of time encoding dims
+  --n_layers N_LAYERS   number of hidden gnn layers
+  --weight_decay WEIGHT_DECAY
+                        Weight for L2 loss
+  --gpu GPU             number of GPU
+  --seed SEED           number of seed
+  --batch_size BATCH_SIZE
+                        batch size
+  --num_heads NUM_HEADS
+                        number of heads
+``` -->
+
+## Result
+
+
+| Date | Method | middle test AUC of **A** | middle test AUC of **B** |
+|:-:|:-:|:-:|:-:|
+| 2022.01.15 | R-GAT (最终提交版本) | 0.494439 | 0.501796 |
+| 2021.12.16 | R-GAT (中期提交版本) | 0.498004853 | 0.505898455 |
+感觉是在middle test上过拟合了。。就随便交一个吧。。
+
+
+<!-- ![12.23](./12.13.png) -->
+
+<!-- 由于12.13测试集发生改变，所以重新跑了一下。 -->
 
 | Date | Method | **Best** initial test AUC of **A** | **Best** initial test AUC of **B** |
 |:-:|:-:|:-:|:-:|
+| 2022.01.15 | R-GAT (最终提交版本) | 0.6428 | 0.61544 |
 | 2021.12.16 | R-GAT (中期提交版本) | 0.6357 | 0.61544 |
 | 2021.12.08 | R-GAT | 0.62721 | 0.60426 |
 | 2021.12.03 | minibatch  | 0.6113 | 0.58478 |
@@ -33,6 +126,9 @@ Download links to initial test set: [Dataset A](https://data.dgl.ai/dataset/WSDM
 
 <!-- | 2021.12.14 | R-GAT (中期提交版本) | 0.63458 | 0.61346 | -->
 
+
+---
+## 一些探索和记录（可忽略）
 #### 一些问题
 参数敏感，只在initial上拟合，未必在最终的test上拟合。B不同的run，结果稍有不同。
 
@@ -122,7 +218,7 @@ torch.Size([29457, 768])
 #### 一些细节
 baseline中，A没有使用 etype_feat，B没有使用 edata['feat']
 
----
+<!-- ---
 
 The baseline is only a minimal working example for both datasets, and it is certainly not optimal.  **You are encouraged to tweak it or propose your own solutions from scratch!**
 
@@ -132,79 +228,13 @@ Event timestamps on the graph are encoded by decomposing the 10-digit decimal in
 We train the model as binary classification using a negative-sampling-like strategy.
 Given a ground truth event `(s, d, r, t)` with source node `s`, destination node `d`, event type `r` and timestamp `t`, we perturb `t` to obtain a new value `t'`.
 We label the quadruplet with 1 if the new timestamp is larger than the original timestamp, and 0 otherwise.  The model is essentially trained to
-predict `p(t < t' | s, d, r)`, i.e. the probability that an edge with type `r` exists from source `s` and destination `d` before timestamp `t'`.
+predict `p(t < t' | s, d, r)`, i.e. the probability that an edge with type `r` exists from source `s` and destination `d` before timestamp `t'`. -->
 
-## Baseline usage
 
-不需要手动下载数据集，直接运行程序即可。
 
-To use the baseline you need to install [DGL](https://www.dgl.ai).
+<!-- ## Performance on Initial Test Set
 
-~~ou also need at least 64GB of CPU memory.  GPU is not required.~~
-
-**mini-batch train in GPU, full batch inference in CPU!**
-
-1. Convert csv file to DGL graph objects.
-
-   ```bash
-   python3 csv2DGLgraph.py --dataset [A or B]
-   ```
-
-2. Training.
-
-   ```bash
-   cd scripts/
-   nohup bash trainA.sh > ../outputs/a.log 2>&1 &
-   nohup bash trainB.sh > ../outputs/b.log 2>&1 &
-   ```
-3. Result.
-   ```bash
-   cd outputs/
-   zip output_middle.zip output_A.csv output_B.csv
-   ```
-
-#### Args
-```bash
-usage: Base [-h] [--dataset {A,B}] [--train_path TRAIN_PATH]
-            [--test_path TEST_PATH] [--graph_path GRAPH_PATH]
-            [--output_path OUTPUT_PATH] [--lr LR] [--epochs EPOCHS]
-            [--node_enc_dim NODE_ENC_DIM] [--hid_dim HID_DIM]
-            [--emb_dim EMB_DIM] [--time_dim TIME_DIM] [--n_layers N_LAYERS]
-            [--weight_decay WEIGHT_DECAY] [--gpu GPU] [--seed SEED]
-            [--batch_size BATCH_SIZE] [--num_heads NUM_HEADS]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --dataset {A,B}       Dataset name
-  --train_path TRAIN_PATH
-                        train data path
-  --test_path TEST_PATH
-                        test data path
-  --graph_path GRAPH_PATH
-                        dgl graph path
-  --output_path OUTPUT_PATH
-                        output path
-  --lr LR               learning rate
-  --epochs EPOCHS       Number of epochs
-  --node_enc_dim NODE_ENC_DIM
-                        embedding dim of node feature in A
-  --hid_dim HID_DIM     number of hidden gnn units
-  --emb_dim EMB_DIM     number of final gnn embedding units
-  --time_dim TIME_DIM   number of time encoding dims
-  --n_layers N_LAYERS   number of hidden gnn layers
-  --weight_decay WEIGHT_DECAY
-                        Weight for L2 loss
-  --gpu GPU             number of GPU
-  --seed SEED           number of seed
-  --batch_size BATCH_SIZE
-                        batch size
-  --num_heads NUM_HEADS
-                        number of heads
-```
-
-## Performance on Initial Test Set
-
-The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B.
+The baseline got AUC of 0.511 on Dataset A and 0.510 on Dataset B. -->
 
 ## Tree
 ```bash

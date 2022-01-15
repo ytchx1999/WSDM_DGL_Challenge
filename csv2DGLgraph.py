@@ -22,12 +22,14 @@ def csv2graph(args):
     heterogenous_group = edge_csv.groupby(2)
     graph_dict = {}
     ts_dict = {}
+    # tm_dict = {}
 
     for event_type, records in heterogenous_group:
         event_type = str(event_type)
         graph_dict[(src_type, event_type, dst_type)] = (records[0].to_numpy(), records[1].to_numpy())
         # ts_dict[(src_type, event_type, dst_type)] = (torch.FloatTensor(records[3].to_numpy()))
         ts_dict[(src_type, event_type, dst_type)] = (torch.tensor(records[3].to_numpy()).long())
+        # tm_dict[(src_type, event_type, dst_type)] = (torch.tensor(records[3].to_numpy()).long())
     g = dgl.heterograph(graph_dict)
 
     g.edata['ts'] = ts_dict

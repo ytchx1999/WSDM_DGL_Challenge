@@ -122,16 +122,16 @@ def train(args, g, etype_feat=None):
         dim_nfeat = g.ndata['feat'][g.ntypes[0]].shape[1]
         args.time_dim = 1
 
-        for ntype in g.ntypes:
-            # ndata_mean = g.nodes[ntype].data['feat'].mean(dim=0)
-            # feat = g.nodes[ntype].data['feat']
-            # feat_dim = feat.shape[1]
-            # for i in range(feat.shape[0]):
-            #     if torch.equal(feat[i], torch.zeros((feat_dim,))):
-            #         feat[i] = ndata_mean
-            # g.nodes[ntype].data['feat'] = feat
-            # torch.manual_seed(args.seed + 1)  # randn结果可复现
-            g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
+        # for ntype in g.ntypes:
+        #     # ndata_mean = g.nodes[ntype].data['feat'].mean(dim=0)
+        #     # feat = g.nodes[ntype].data['feat']
+        #     # feat_dim = feat.shape[1]
+        #     # for i in range(feat.shape[0]):
+        #     #     if torch.equal(feat[i], torch.zeros((feat_dim,))):
+        #     #         feat[i] = ndata_mean
+        #     # g.nodes[ntype].data['feat'] = feat
+        #     # torch.manual_seed(args.seed + 1)  # randn结果可复现
+        #     g.nodes[ntype].data['feat'] += torch.randn((g.number_of_nodes(ntype), dim_nfeat)) * 0.01
     else:
         dim_nfeat = g.ndata['feat'].shape[1]
 
